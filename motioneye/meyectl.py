@@ -85,7 +85,8 @@ def find_command(command):
         relayevent_sh = os.path.join(os.path.dirname(__file__), 'scripts/relayevent.sh')
 
         cmd = relayevent_sh + ' "%s"' % (settings.config_file or '')
-
+    elif command == 'opencv_processor':
+        cmd = os.path.join(os.path.dirname(__file__), 'extra/opencv_processor.py')
     else:
         cmd = __file__
         cmd = sys.executable + ' ' + cmd
@@ -258,6 +259,7 @@ def make_arg_parser(command=None):
         description += '  sendmail\n'
         description += '  sendtelegram\n'
         description += '  webhook\n'
+        description += '  mqtt_publish\n'
         description += '  shell\n\n'
 
         epilog = 'type "%(prog)s [command] -h" for help on a specific command\n\n'
@@ -348,6 +350,11 @@ def main():
         from motioneye import webhook
 
         webhook.main(arg_parser, sys.argv[2:])
+
+    elif command == 'mqtt_publish':
+        from motioneye import homeassistant
+
+        homeassistant.mqtt_publish_main(arg_parser, sys.argv[2:])
 
     elif command == 'shell':
         from motioneye import shell

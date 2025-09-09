@@ -29,7 +29,14 @@ from urllib.parse import urlunparse
 from tornado.ioloop import IOLoop
 
 from motioneye import meyectl, motionctl, settings, tasks, uploadservices, utils
-from motioneye.controls import diskctl, smbctl, v4l2ctl
+import sys
+
+from motioneye.controls import diskctl, smbctl
+
+if sys.platform.startswith('linux'):
+    from motioneye.controls import v4l2ctl as camctl
+else:
+    from motioneye.controls import macoscamctl as camctl
 from motioneye.controls.powerctl import PowerControl
 
 _CAMERA_CONFIG_FILE_NAME = 'camera-%(id)s.conf'
@@ -655,7 +662,7 @@ def add_camera(device_details):
     camera_config = {'@enabled': True}
     if proto == 'v4l2':
         # find a suitable resolution
-        for w, h in v4l2ctl.list_resolutions(device_details['path']):
+        for w, h in camctl.list_resolutions(device_details['path']):
             if w > 300:
                 camera_config['width'] = w
                 camera_config['height'] = h
@@ -1175,6 +1182,10 @@ def motion_camera_ui_to_dict(ui, prev_config=None):
 
     # event start
     on_event_start = [f"{meyectl.find_command('relayevent')} start %t"]
+    main_config = get_main()
+    if main_config.get('@_mqtt', {}).get('enabled'):
+        on_event_start.append(f"python3 {meyectl.find_command('mqtt_publish')} motion_on %t")
+
     if ui['email_notifications_enabled']:
         emails = sub('\\s', '', ui['email_notifications_addresses'])
 
@@ -1228,6 +1239,8 @@ def motion_camera_ui_to_dict(ui, prev_config=None):
 
     # event end
     on_event_end = [f"{meyectl.find_command('relayevent')} stop %t"]
+    if main_config.get('@_mqtt', {}).get('enabled'):
+        on_event_end.append(f"python3 {meyectl.find_command('mqtt_publish')} motion_off %t")
 
     if ui['web_hook_end_notifications_enabled']:
         url = sub(r'\s', '+', ui['web_hook_end_notifications_url'])
@@ -1265,8 +1278,12 @@ def motion_camera_ui_to_dict(ui, prev_config=None):
 
     data['on_movie_end'] = '; '.join(on_movie_end)
 
+    data['@opencv_enabled'] = ui['opencv_enabled']
+
     # picture save
     on_picture_save = [f"{meyectl.find_command('relayevent')} picture_save %t %f"]
+    if ui['opencv_enabled']:
+        on_picture_save.append(f"python3 {meyectl.find_command('opencv_processor')} %f {settings.CONF_PATH}")
 
     if ui['web_hook_storage_enabled']:
         url = sub('\\s', '+', ui['web_hook_storage_url'])
@@ -1397,6 +1414,7 @@ def motion_camera_dict_to_ui(data):
         'motion_mask_lines': [],
         'create_debug_media': data['movie_output_motion']
         or data['picture_output_motion'],
+        'opencv_enabled': data['@opencv_enabled'],
         # motion notifications
         'email_notifications_enabled': False,
         'telegram_notifications_enabled': False,
@@ -1461,13 +1479,13 @@ def motion_camera_dict_to_ui(data):
         ui['proto'] = 'v4l2'
 
         # resolutions
-        resolutions = v4l2ctl.list_resolutions(data['videodevice'])
+        resolutions = camctl.list_resolutions(data['videodevice'])
         ui['available_resolutions'] = [
             (str(w) + 'x' + str(h)) for (w, h) in resolutions
         ]
         ui['resolution'] = str(data['width']) + 'x' + str(data['height'])
 
-        video_controls = v4l2ctl.list_ctrls(data['videodevice'])
+        video_controls = camctl.list_ctrls(data['videodevice'])
         video_controls = [
             (n, c)
             for (n, c) in list(video_controls.items())
@@ -2169,6 +2187,14 @@ def _set_default_motion(data):
     data.setdefault('@normal_password', '')
     data.setdefault('@lang', 'en')
 
+    data.setdefault('@_mqtt', {
+        'enabled': False,
+        'broker_address': '',
+        'broker_port': 1883,
+        'username': '',
+        'password': ''
+    })
+
     data.setdefault('setup_mode', False)
     data.setdefault('webcontrol_port', settings.MOTION_CONTROL_PORT)
     data.setdefault('webcontrol_interface', 1)
@@ -2290,6 +2316,7 @@ def _set_default_motion_camera(camera_id, data):
     data.setdefault('on_event_end', '')
     data.setdefault('on_movie_end', '')
     data.setdefault('on_picture_save', '')
+    data.setdefault('@opencv_enabled', False)
 
 
 def _set_default_simple_mjpeg_camera(camera_id, data):
