@@ -13,6 +13,10 @@ You can contribute to translations on [__Weblate__](https://hosted.weblate.org/p
 
 # Installation
 
+motionEye supports Linux (Debian/Ubuntu) and macOS. For a guide on the new features like Facial Recognition and Home Assistant integration, please see [`NEW_FEATURES.md`](./NEW_FEATURES.md).
+
+### Linux (Debian/Ubuntu)
+
 1. Install **Python 3.7 or later** and build dependencies
 
     _Here the commands for APT-based Linux distributions are given._
@@ -49,6 +53,10 @@ You can contribute to translations on [__Weblate__](https://hosted.weblate.org/p
     sudo motioneye_init
     ```
     _NB: `motioneye_init` currently assumes either an APT- or RPM-based distribution with `systemd` as init system. For a manual setup, config and service files can be found here: <https://github.com/motioneye-project/motioneye/tree/dev/motioneye/extra>_
+
+### macOS
+
+For detailed instructions on installing on macOS, which involves building from source and setting up the background service, please see the **[macOS Installation guide in NEW_FEATURES.md](./NEW_FEATURES.md#1-macos-installation)**.
 
 # Upgrade
 
