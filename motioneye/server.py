@@ -27,10 +27,17 @@ import time
 from tornado.ioloop import IOLoop
 from tornado.web import Application
 
-from motioneye import settings, template
-from motioneye.controls import smbctl, v4l2ctl
+from motioneye import settings, template, homeassistant, config, utils
+import sys
+
 from motioneye.handlers.action import ActionHandler
 from motioneye.handlers.base import ManifestHandler, NotFoundHandler
+from motioneye.controls import smbctl
+
+if sys.platform.startswith('linux'):
+    from motioneye.controls import v4l2ctl as camctl
+else:
+    from motioneye.controls import macoscamctl as camctl
 from motioneye.handlers.config import ConfigHandler
 from motioneye.handlers.log import LogHandler
 from motioneye.handlers.login import LoginHandler
@@ -43,6 +50,7 @@ from motioneye.handlers.prefs import PrefsHandler
 from motioneye.handlers.relay_event import RelayEventHandler
 from motioneye.handlers.update import UpdateHandler
 from motioneye.handlers.version import VersionHandler
+from motioneye.handlers.faces import FacesHandler, FacesPageHandler
 
 _PID_FILE = 'motioneye.pid'
 _CURRENT_PICTURE_REGEX = re.compile(r'^/picture/\d+/current')
@@ -222,6 +230,9 @@ handler_mapping = [
     (r'^/update/?$', UpdateHandler),
     (r'^/power/(?P<op>shutdown|reboot)/?$', PowerHandler),
     (r'^/version/?$', VersionHandler),
+    (r'^/faces/?$', FacesHandler),
+    (r'^/faces/(?P<filename>[^/]+)/?$', FacesHandler),
+    (r'^/faces.html$', FacesPageHandler),
     (r'^/login/?$', LoginHandler),
     (r'^.*$', NotFoundHandler),
 ]
@@ -312,7 +323,7 @@ def test_requirements():
 
     has_ffmpeg = mediafiles.find_ffmpeg() is not None
 
-    has_v4lutils = v4l2ctl.find_v4l2_ctl() is not None
+    has_v4lutils = camctl.find_v4l2_ctl() is not None
 
     if settings.SMB_SHARES and smbctl.find_mount_cifs() is None:
         logging.fatal('please install cifs-utils')
@@ -422,6 +433,11 @@ def run():
     logging.info(_('saluton! ĉi tio estas motionEye-servilo ') + motioneye.VERSION)
 
     test_requirements()
+
+    # Initialize Home Assistant MQTT agent
+    main_config = config.get_main()
+    ha_agent = homeassistant.init(main_config)
+
     make_media_folders()
 
     if settings.SMB_SHARES:
@@ -431,6 +447,13 @@ def run():
 
     else:
         start_motion()
+
+    # Publish Home Assistant discovery messages for all cameras
+    if ha_agent:
+        for camera_id in config.get_camera_ids():
+            camera_config = config.get_camera(camera_id)
+            if camera_config and utils.is_local_motion_camera(camera_config):
+                ha_agent.publish_discovery_message(camera_config)
 
     if settings.CLEANUP_INTERVAL:
         cleanup.start()

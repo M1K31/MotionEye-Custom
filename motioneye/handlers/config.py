@@ -35,7 +35,14 @@ from motioneye import (
     uploadservices,
     utils,
 )
-from motioneye.controls import mmalctl, smbctl, tzctl, v4l2ctl
+import sys
+
+from motioneye.controls import mmalctl, smbctl, tzctl
+
+if sys.platform.startswith('linux'):
+    from motioneye.controls import v4l2ctl as camctl
+else:
+    from motioneye.controls import macoscamctl as camctl
 from motioneye.controls.powerctl import PowerControl
 from motioneye.handlers.base import BaseHandler
 from motioneye.utils.mjpeg import test_mjpeg_url
@@ -457,7 +464,7 @@ class ConfigHandler(BaseHandler):
 
             cameras = [
                 {'id': d[1], 'name': d[2]}
-                for d in v4l2ctl.list_devices()
+                for d in camctl.list_devices()
                 if (d[0] not in configured_devices) and (d[1] not in configured_devices)
             ]
 
