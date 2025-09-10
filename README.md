@@ -21,7 +21,7 @@ For a guide on the new features in this version, please see [`NEW_FEATURES.md`](
 
 ### For Developers (installing from this source code)
 
-These instructions will install the version of motionEye from your local checkout.
+These instructions will install the version of motionEye from your local checkout. For uninstallation instructions, see [`UNINSTALL.md`](./UNINSTALL.md).
 
 1.  **Install Dependencies:**
     *   **For Linux (Debian/Ubuntu):**
