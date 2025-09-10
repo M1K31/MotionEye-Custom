@@ -1,76 +1,33 @@
-# Docker instructions
+# Docker Instructions for motionEye (Development Version)
 
-## Running from the official images
+The instructions below are for building and running a Docker image from the source code in this repository. This is the recommended method for developers or users who want to test the new features included here.
 
-The easiest way to run motionEye under docker is to use the official images.
-The command below will run motionEye and preserve your configuration and videos
-across motionEye restarts.
+## Building the Docker Image
 
-```bash
-docker pull ccrisan/motioneye:master-amd64
-docker run \
-  --rm \
-  -d \
-  -p 8765:8765 \
-  --hostname="motioneye" \
-  -v /etc/localtime:/etc/localtime:ro \
-  -v /data/motioneye/config:/etc/motioneye \
-  -v /data/motioneye/videos:/var/lib/motioneye \
-  ccrisan/motioneye:master-amd64
-```
-
-This configuration maps motionEye configs into the `/data/motioneye/config`
-directory on the host. Videos will be saved under `/data/motioneye/videos`.
-Change the directories to suit your particular needs and make sure those
-directories exist on the host before you start the container.
-
-Some may prefer to use docker volumes instead of mapped directories on the
-host. You can easily accomplish this by using the commands below:
+From the root directory of this repository, run the following command:
 
 ```bash
-docker volume create motioneye-config
-docker volume create motioneye-videos
-docker pull ccrisan/motioneye:master-amd64
-docker run \
-  --rm \
-  -d \
-  -p 8765:8765 \
-  --hostname="motioneye" =
-  -v /etc/localtime:/etc/localtime:ro \
-  --mount type=volume,source=motioneye-config,destination=/etc/motioneye \
-  --mount type=volume,source=motioneye-videos,destination=/var/lib/motioneye \
-  ccrisan/motioneye:master-amd64
+docker build -t motioneye-local -f docker/Dockerfile .
 ```
 
-Use `docker volume ls` to view existing volumes.
+This will build a new Docker image tagged `motioneye-local` using the local source code.
 
-## Building your own image
+## Running the Container
 
-It's also possible to build your own motionEye docker image. This allows the
-use of UIDs other than root for the `motion` and `meyectl` daemons (the default
-on official images). If you want to use a non-privileged user/group for
-motionEye, *please make sure that user/group exist on the host* before running
-the commands below.
+You can run the container you just built using `docker-compose`. The provided `docker-compose.yml` is already configured to build from the local source.
 
-For the examples below, we assume user `motion` and group `motion` exist on the host server.
+1.  **Navigate to the docker directory:**
+    ```bash
+    cd docker
+    ```
 
-```bash
-RUN_USER="motion"
-RUN_UID=$(id -u ${RUN_USER})
-RUN_GID=$(id -g ${RUN_USER})
-TIMESTAMP="$(date '+%Y%m%d-%H%M')"
+2.  **Start the container in the background:**
+    ```bash
+    docker-compose up -d
+    ```
 
-# The following command should be run from the root of the repository
-docker build \
-  --network host \
-  --build-arg="RUN_UID=${RUN_UID?}" \
-  --build-arg="RUN_GID=${RUN_GID?}" \
-  -t "${USER?}/motioneye:${TIMESTAMP}" \
-  --no-cache \
-  -f docker/Dockerfile .
-```
+This will start the motionEye container. Your configuration will be stored in a Docker volume named `etc_motioneye`, and your media files will be in `var_lib_motioneye`.
 
-This will create a local image called `your_username/motioneye:YYYYMMDD-HHMM`.
-You can run this image using the examples under "Running official images", but
-omitting the `docker pull` command and replacing
-`ccrisan/motioneye:master-amd64` with the name of the local image you just built.
+### Accessing Device Cameras
+
+To give the Docker container access to your host machine's USB cameras, you can use the `docker-compose.override.yml` file, which is automatically loaded by Docker Compose. This file is pre-configured to pass through `/dev/video0` and `/dev/video1`. You can edit it to add more devices if needed.
