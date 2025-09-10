@@ -17,6 +17,8 @@ This repository contains a development version of motionEye with new features. T
 
 **For instructions on how to install the official, stable release of motionEye, please refer to the [official project wiki](https://github.com/motioneye-project/motioneye/wiki).**
 
+For guidance on securing your installation with a reverse proxy and other security best practices, see [`SECURITY.md`](./SECURITY.md).
+
 For a guide on the new features in this version, please see [`NEW_FEATURES.md`](./NEW_FEATURES.md).
 
 ### For Developers (installing from this source code)

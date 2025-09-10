@@ -6,6 +6,7 @@
 import json
 import logging
 import paho.mqtt.client as mqtt
+import os
 import time
 
 from motioneye import settings
@@ -27,6 +28,8 @@ class HomeAssistantAgent:
         port = self._mqtt_settings.get('broker_port', 1883)
         username = self._mqtt_settings.get('username')
         password = self._mqtt_settings.get('password')
+        enable_tls = self._mqtt_settings.get('enable_tls', False)
+        ca_certs_path = self._mqtt_settings.get('ca_certs_path', None)
 
         if not broker:
             logging.warning('MQTT enabled but no broker address is configured.')
@@ -37,6 +40,16 @@ class HomeAssistantAgent:
         self._client = mqtt.Client(client_id="motionEye_server")
         if username and password:
             self._client.username_pw_set(username, password)
+
+        if enable_tls:
+            logging.info("MQTT TLS is enabled.")
+            try:
+                # If a path is provided, use it. Otherwise, paho-mqtt will use system default CAs.
+                self._client.tls_set(ca_certs=ca_certs_path if ca_certs_path else None)
+            except Exception as e:
+                logging.error(f"Failed to set MQTT TLS options: {e}")
+                self._enabled = False
+                return
 
         try:
             self._client.connect(broker, port, 60)
@@ -54,7 +67,6 @@ class HomeAssistantAgent:
         camera_id = camera_config['@id']
         camera_name = camera_config['camera_name']
 
-        # Define a device for this camera. This allows Home Assistant to group entities.
         device_info = {
             "identifiers": [f"motioneye_camera_{camera_id}"],
             "name": f"motionEye Camera - {camera_name}",
@@ -62,7 +74,6 @@ class HomeAssistantAgent:
             "model": "motionEye"
         }
 
-        # Discovery topic for motion binary_sensor
         motion_sensor_topic = f"homeassistant/binary_sensor/motioneye_{camera_id}_motion/config"
         motion_state_topic = f"motioneye/camera_{camera_id}/motion"
 
@@ -106,8 +117,7 @@ def get_agent():
 
 
 def mqtt_publish_main(parser, args):
-    """The main function for the mqtt_publish meyectl command.
-    This runs as a separate process and should be a short-lived client."""
+    """The main function for the mqtt_publish meyectl command."""
     import argparse
     from motioneye import config
 
@@ -119,13 +129,14 @@ def mqtt_publish_main(parser, args):
     mqtt_settings = main_config.get('@_mqtt', {})
 
     if not mqtt_settings.get('enabled'):
-        # Don't log an error, just exit gracefully if the feature is disabled.
         return
 
     broker = mqtt_settings.get('broker_address')
     port = mqtt_settings.get('broker_port', 1883)
     username = mqtt_settings.get('username')
     password = mqtt_settings.get('password')
+    enable_tls = mqtt_settings.get('enable_tls', False)
+    ca_certs_path = mqtt_settings.get('ca_certs_path', None)
 
     if not broker:
         logging.error('MQTT is enabled, but no broker address is configured.')
@@ -135,13 +146,19 @@ def mqtt_publish_main(parser, args):
     if username and password:
         client.username_pw_set(username, password)
 
+    if enable_tls:
+        try:
+            client.tls_set(ca_certs=ca_certs_path if ca_certs_path else None)
+        except Exception as e:
+            logging.error(f"MQTT Publisher failed to set TLS options: {e}")
+            return
+
     try:
         client.connect(broker, port, 60)
     except Exception as e:
         logging.error(f"MQTT publisher failed to connect: {e}")
         return
 
-    # Determine topic and payload
     camera_id = options.camera_id
     if options.topic == 'motion_on':
         state_topic = f"motioneye/camera_{camera_id}/motion"
@@ -154,10 +171,7 @@ def mqtt_publish_main(parser, args):
         client.disconnect()
         return
 
-    # Publish the message
     logging.info(f"MQTT Publisher: sending '{payload}' to '{state_topic}'")
     client.publish(state_topic, payload, retain=True)
-
-    # Disconnect gracefully
     client.disconnect()
     logging.debug("MQTT Publisher: disconnected.")
