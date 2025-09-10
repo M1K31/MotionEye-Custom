@@ -13,55 +13,50 @@ You can contribute to translations on [__Weblate__](https://hosted.weblate.org/p
 
 # Installation
 
-motionEye supports Linux (Debian/Ubuntu) and macOS. For a guide on the new features like Facial Recognition and Home Assistant integration, please see [`NEW_FEATURES.md`](./NEW_FEATURES.md).
+This repository contains a development version of motionEye with new features. The instructions below are for installing this version from the local source code.
 
-### Linux (Debian/Ubuntu)
+**For instructions on how to install the official, stable release of motionEye, please refer to the [official project wiki](https://github.com/motioneye-project/motioneye/wiki).**
 
-1. Install **Python 3.7 or later** and build dependencies
+For a guide on the new features in this version, please see [`NEW_FEATURES.md`](./NEW_FEATURES.md).
 
-    _Here the commands for APT-based Linux distributions are given._
+### For Developers (installing from this source code)
 
-    Thanks to pre-compiled wheels from PyPI, installing motionEye usually does not require anything but Python 3 and cURL with the ability to do HTTPS network requests:
+These instructions will install the version of motionEye from your local checkout. For uninstallation instructions, see [`UNINSTALL.md`](./UNINSTALL.md).
+
+1.  **Install Dependencies:**
+    *   **For Linux (Debian/Ubuntu):**
+        ```sh
+        sudo apt update
+        sudo apt --no-install-recommends install python3 python3-pip motion ffmpeg v4l-utils
+        ```
+    *   **For macOS:** Follow the detailed instructions in the **[macOS Installation guide](./NEW_FEATURES.md#1-macos-installation)** to build the `motion` dependency.
+
+2.  **Install motionEye from local source:** Navigate to the root of this repository and run:
     ```sh
-    sudo apt update
-    sudo apt --no-install-recommends install ca-certificates curl python3
+    sudo python3 -m pip install .
     ```
+    This command installs motionEye and all its Python dependencies, including `opencv`, `face_recognition`, and `paho-mqtt`.
 
-    On **ARMv6 and ARMv7 (32-bit), RISC-V and other rare CPU architectures** additional build dependencies may be required to compile the [Pillow](https://pypi.org/project/pillow/) and [PycURL](https://pypi.org/project/pycurl/) modules:
-    ```sh
-    sudo apt update
-    sudo apt --no-install-recommends install ca-certificates curl python3 python3-dev gcc libjpeg62-turbo-dev libcurl4-openssl-dev libssl-dev
-    ```
-
-2. Install the Python package manager `pip`
-    ```sh
-    curl -sSfO 'https://bootstrap.pypa.io/get-pip.py'
-    sudo python3 get-pip.py
-    rm get-pip.py
-    ```
-
-    **On recent Debian (Bookworm ant later) and Ubuntu (Lunar and later) versions**, the `libpython3.*-stdlib` package ships a file `/usr/lib/python3.*/EXTERNALLY-MANAGED`, which prevents the installation of Python modules outside of `venv` environments.
-    motionEye however has a small number of dependencies with no strict version requirements and hence is very unlikely to break any Python package you might have installed via APT. To bypass this block, add `break-system-packages=true` to the `[global]` section of your `pip.conf`:
-    ```sh
-    grep -q '\[global\]' /etc/pip.conf 2> /dev/null || printf '%b' '[global]\n' | sudo tee -a /etc/pip.conf > /dev/null
-    sudo sed -i '/^\[global\]/a\break-system-packages=true' /etc/pip.conf
-    ```
-
-3. Install and setup **motionEye**
-    ```sh
-    sudo python3 -m pip install --pre motioneye
-    sudo motioneye_init
-    ```
-    _NB: `motioneye_init` currently assumes either an APT- or RPM-based distribution with `systemd` as init system. For a manual setup, config and service files can be found here: <https://github.com/motioneye-project/motioneye/tree/dev/motioneye/extra>_
-
-### macOS
-
-For detailed instructions on installing on macOS, which involves building from source and setting up the background service, please see the **[macOS Installation guide in NEW_FEATURES.md](./NEW_FEATURES.md#1-macos-installation)**.
+3.  **Run post-installation setup:**
+    *   **For Linux:** `sudo motioneye_init`
+    *   **For macOS:** `sudo ./build/install_macos.sh`
 
 # Upgrade
 
+### For Users (from PyPI)
+
+If you installed motionEye from PyPI, you can upgrade to the latest official release with:
 ```sh
 sudo systemctl stop motioneye
 sudo python3 -m pip install --upgrade --pre motioneye
 sudo systemctl start motioneye
+```
+
+### For Developers (from source)
+
+If you installed from source, you can update by fetching the latest code and reinstalling:
+```sh
+git pull
+sudo python3 -m pip install .
+sudo systemctl restart motioneye # Or restart the launchd service on macOS
 ```

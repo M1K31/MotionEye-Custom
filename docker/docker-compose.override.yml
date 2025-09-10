@@ -2,7 +2,8 @@ version: "3.5"
 services:
   motioneye:
     restart: unless-stopped
-    image: ghcr.io/motioneye-project/motioneye:edge  # https://github.com/motioneye-project/motioneye/pkgs/container/motioneye
+    # The 'image' directive is inherited from the base docker-compose.yml
+    # To build from local source, ensure 'build: .' is uncommented in the base file.
     devices:
       - "/dev/video0:/dev/video0"
       - "/dev/video1:/dev/video1"

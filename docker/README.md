@@ -60,9 +60,7 @@ RUN_UID=$(id -u ${RUN_USER})
 RUN_GID=$(id -g ${RUN_USER})
 TIMESTAMP="$(date '+%Y%m%d-%H%M')"
 
-cd /tmp && \
-git clone https://github.com/motioneye-project/motioneye.git && \
-cd motioneye && \
+# The following command should be run from the root of the repository
 docker build \
   --network host \
   --build-arg="RUN_UID=${RUN_UID?}" \
