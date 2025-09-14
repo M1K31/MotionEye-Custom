@@ -15,8 +15,9 @@ For development or debugging, you can run motionEye directly from the command li
 
 2.  **Run the startserver command:**
     ```sh
-    meyectl startserver
+    python3 -m motioneye.meyectl startserver
     ```
+    > **Note:** This command runs motionEye as a Python module, which is a reliable method that does not depend on your system's `PATH` configuration.
 
 The web interface will typically be available at `http://localhost:8765`.
 
