@@ -6,7 +6,7 @@
 import os
 import json
 import logging
-from motioneye.handlers.base import BaseHandler, TemplateMixin
+from motioneye.handlers.base import BaseHandler
 from motioneye import settings
 
 # This should be consistent with opencv_processor.py
@@ -91,7 +91,7 @@ class FacesHandler(BaseHandler):
                 logging.error(f"Failed to clear face encodings cache: {e}")
 
 
-class FacesPageHandler(BaseHandler, TemplateMixin):
+class FacesPageHandler(BaseHandler):
     @BaseHandler.auth(admin=True)
     def get(self):
         self.render('faces.html')
