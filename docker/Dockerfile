@@ -1,9 +1,15 @@
 FROM debian:trixie-slim
 LABEL maintainer="Marcus Klein <himself@kleini.org>"
 
-# By default, run as root
-ARG RUN_UID=0
-ARG RUN_GID=0
+# Replace lines 3-4 with:
+ARG RUN_UID=1000
+ARG RUN_GID=1000
+
+# Add security hardening:
+USER motion:motion
+WORKDIR /app
+# Ensure no SUID/SGID binaries
+RUN find / -type f \( -perm -4000 -o -perm -2000 \) -delete 2>/dev/null || true
 
 COPY . /tmp/motioneye
 COPY docker/entrypoint.sh /entrypoint.sh
