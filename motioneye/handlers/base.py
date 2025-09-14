@@ -77,8 +77,13 @@ class BaseHandler(RequestHandler):
         if not self._finished:
             import motioneye
 
+            # Security headers
             self.set_header('Server', f'motionEye/{motioneye.VERSION}')
-
+            self.set_header('X-Content-Type-Options', 'nosniff')
+            self.set_header('X-Frame-Options', 'DENY')
+            self.set_header('X-XSS-Protection', '1; mode=block')
+            self.set_header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+        
             return super().finish(chunk=chunk)
         else:
             logging.debug('Already finished')
