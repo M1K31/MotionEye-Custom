@@ -3,6 +3,12 @@
 # This script automates the installation and setup of motionEye as a
 # background service on macOS.
 
+# Validate environment
+if [ -z "$USER" ] || [ -z "$HOME" ]; then
+    echo "ERROR: Required environment variables not set"
+    exit 1
+fi
+
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
