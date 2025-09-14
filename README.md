@@ -41,6 +41,38 @@ These instructions will install the version of motionEye from your local checkou
     *   **For Linux:** `sudo motioneye_init`
     *   **For macOS:** `sudo ./build/install_macos.sh`
 
+### Running for Development (local instance)
+
+If you are a developer and you want to run motionEye without installing it as a system-wide service, you can run it directly from the source tree. This is useful for testing and debugging.
+
+1.  **Install Dependencies:** Follow the dependency installation instructions in the "For Developers" section above. Make sure you have installed both the system packages (like `motion` and `ffmpeg`) and the Python packages (by running `pip install .`).
+
+2.  **Create Local Directories:** In the root of the project, create local directories to store your configuration, logs, and media files.
+    ```sh
+    mkdir -p conf run log media
+    ```
+
+3.  **Create a Local Configuration File:** You will need a configuration file to tell motionEye where to find your local directories.
+    *   First, get the full path to your project directory by running `pwd`.
+    *   Create a new file named `conf/motioneye.conf`.
+    *   Add the following content to the file, replacing `/path/to/your/project` with the actual path you got from `pwd`:
+        ```
+        # Local configuration for motionEye development
+        conf_path /path/to/your/project/conf
+        run_path /path/to/your/project/run
+        log_path /path/to/your/project/log
+        media_path /path/to/your/project/media
+        listen 0.0.0.0
+        port 8765
+        log_level info
+        ```
+
+4.  **Run the Server:** Now you can start the server using your local configuration:
+    ```sh
+    python3 -m motioneye.meyectl startserver -c conf/motioneye.conf
+    ```
+    The server will be running in the foreground and will be accessible at `http://localhost:8765`.
+
 # Upgrade
 
 ### For Users (from PyPI)
