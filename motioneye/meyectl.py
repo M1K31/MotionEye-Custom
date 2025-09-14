@@ -22,6 +22,9 @@ import locale
 import logging
 import os.path
 import sys
+import os
+import signal
+import subprocess
 from shlex import quote
 
 import babel
@@ -318,6 +321,47 @@ def print_version_and_exit():
     sys.exit()
 
 
+def check_and_kill_existing_processes():
+    """Checks for existing motionEye processes and asks the user to kill them."""
+    try:
+        # Find processes that contain 'motioneye.meyectl' in their command
+        result = subprocess.run(['pgrep', '-f', 'motioneye.meyectl'], capture_output=True, text=True)
+        if not result.stdout:
+            return  # No processes found
+
+        pids = [int(p) for p in result.stdout.strip().split()]
+        current_pid = os.getpid()
+        other_pids = [p for p in pids if p != current_pid]
+
+        if not other_pids:
+            return  # No other processes found
+
+        print("INFO: Found existing motionEye processes that may cause conflicts:")
+        for pid in other_pids:
+            print(f"  - PID: {pid}")
+
+        answer = input("Do you want to terminate them? (y/n): ").lower()
+        if answer == 'y':
+            for pid in other_pids:
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                    print(f"  - Terminated process {pid}")
+                except OSError as e:
+                    print(f"  - Failed to terminate process {pid}: {e}")
+            print("INFO: Existing processes terminated.")
+        else:
+            print("INFO: Aborting startup. Please manually stop the existing processes.")
+            sys.exit(0)
+
+    except FileNotFoundError:
+        # pgrep not found, we can't check for processes
+        print("WARNING: 'pgrep' command not found. Cannot check for existing processes.")
+    except Exception as e:
+        print(f"WARNING: An error occurred while checking for existing processes: {e}")
+        print("INFO: Aborting startup.")
+        sys.exit(0)
+
+
 def main():
     for a in sys.argv:
         if a == '-v':
@@ -329,6 +373,9 @@ def main():
     load_settings()
 
     command = sys.argv[1]
+    if command == 'startserver':
+        check_and_kill_existing_processes()
+
     arg_parser = make_arg_parser(command)
 
     load_l10n()
