@@ -36,6 +36,9 @@ chmod 640 /var/log/motioneye.log  # Only owner and group can read
 chown root:wheel /var/log/motioneye.log
 
 
+echo "--- Creating working directory [/usr/local/share/motioneye] ---"
+mkdir -p /usr/local/share/motioneye
+
 echo "--- Installing launchd service file [motioneye.plist] ---"
 # Unload the service if it's already running to ensure a clean start
 if [ -f /Library/LaunchDaemons/com.motioneye-project.motioneye.plist ]; then
