@@ -22,10 +22,13 @@ else
     echo "--- /usr/local/etc/motioneye/motioneye.conf already exists, skipping. ---"
 fi
 
+# Replace lines 25-27 with:
 echo "--- Creating log directory [/var/log] and log file ---"
 mkdir -p /var/log
 touch /var/log/motioneye.log
-chmod 664 /var/log/motioneye.log
+chmod 640 /var/log/motioneye.log  # Only owner and group can read
+chown root:wheel /var/log/motioneye.log
+
 
 echo "--- Installing launchd service file [motioneye.plist] ---"
 # Unload the service if it's already running to ensure a clean start
