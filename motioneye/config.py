@@ -1278,7 +1278,7 @@ def motion_camera_ui_to_dict(ui, prev_config=None):
 
     data['on_movie_end'] = '; '.join(on_movie_end)
 
-    data['@opencv_enabled'] = ui['opencv_enabled']
+    data['@opencv_enabled'] = ui.get('opencv_enabled', False)
 
     # picture save
     on_picture_save = [f"{meyectl.find_command('relayevent')} picture_save %t %f"]
