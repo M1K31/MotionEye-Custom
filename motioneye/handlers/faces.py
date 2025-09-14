@@ -22,10 +22,15 @@ class FacesHandler(BaseHandler):
             return self.finish_json([])
 
         faces = []
-        for filename in os.listdir(FACES_DIR):
-            if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
-                name = os.path.splitext(filename)[0]
-                faces.append({'name': name, 'filename': filename})
+        try:
+            for filename in os.listdir(FACES_DIR):
+                if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+                    name = os.path.splitext(filename)[0]
+                    faces.append({'name': name, 'filename': filename})
+        except OSError as e:
+            logging.error(f"Failed to list faces directory: {e}")
+            self.set_status(500)
+            return self.finish_json({'error': 'Failed to access faces directory.'})
 
         return self.finish_json(faces)
 
@@ -33,53 +38,94 @@ class FacesHandler(BaseHandler):
     def post(self):
         """Upload a new face."""
         try:
-            name = self.get_body_argument('name')
+            # FIX: Use get_argument instead of get_body_argument
+            name = self.get_argument('name')
             file_info = self.request.files['file'][0]
             filename = file_info['filename']
             body = file_info['body']
-        except Exception as e:
+        except (KeyError, IndexError) as e:
             logging.error(f"Failed to get face upload data: {e}")
-            return self.finish_json({'error': 'Missing name or file.'}, status_code=400)
+            self.set_status(400)  # FIX: Set status code separately
+            return self.finish_json({'error': 'Missing name or file.'})
 
         if not name or not filename:
-            return self.finish_json({'error': 'Name and filename are required.'}, status_code=400)
+            self.set_status(400)  # FIX: Set status code separately
+            return self.finish_json({'error': 'Name and filename are required.'})
 
-        # Sanitize the name to be used as a filename
+        # FIX: Enhanced sanitization to prevent path traversal
         base_name = "".join(x for x in name if x.isalnum() or x in "._-").rstrip()
-        extension = os.path.splitext(filename)[1]
+        if not base_name:  # Ensure we have a valid filename after sanitization
+            self.set_status(400)
+            return self.finish_json({'error': 'Invalid name provided.'})
+        
+        extension = os.path.splitext(filename)[1].lower()
+        if extension not in ['.png', '.jpg', '.jpeg']:
+            self.set_status(400)
+            return self.finish_json({'error': 'Invalid file type. Only PNG, JPG, and JPEG are allowed.'})
+        
         new_filename = f"{base_name}{extension}"
 
-        if not os.path.exists(FACES_DIR):
-            os.makedirs(FACES_DIR)
+        # FIX: Ensure filename doesn't contain path separators
+        if os.path.sep in new_filename or '..' in new_filename:
+            self.set_status(400)
+            return self.finish_json({'error': 'Invalid filename.'})
 
-        file_path = os.path.join(FACES_DIR, new_filename)
+        try:
+            if not os.path.exists(FACES_DIR):
+                os.makedirs(FACES_DIR, mode=0o755)  # Secure permissions
 
-        with open(file_path, 'wb') as f:
-            f.write(body)
+            file_path = os.path.join(FACES_DIR, new_filename)
+            
+            # FIX: Additional security check
+            if not file_path.startswith(FACES_DIR):
+                self.set_status(400)
+                return self.finish_json({'error': 'Invalid file path.'})
 
-        self._clear_cache()
-        logging.info(f"Added new face: {name} as {new_filename}")
-        return self.finish_json({'name': name, 'filename': new_filename})
+            # FIX: Add exception handling for file operations
+            with open(file_path, 'wb') as f:
+                f.write(body)
+
+            self._clear_cache()
+            logging.info(f"Added new face: {name} as {new_filename}")
+            return self.finish_json({'name': name, 'filename': new_filename})
+            
+        except OSError as e:
+            logging.error(f"Failed to save face file: {e}")
+            self.set_status(500)
+            return self.finish_json({'error': 'Failed to save file.'})
 
     @BaseHandler.auth(admin=True)
     def delete(self, filename):
         """Delete a known face."""
         if not filename:
-            return self.finish_json({'error': 'Filename is required.'}, status_code=400)
+            self.set_status(400)  # FIX: Set status code separately
+            return self.finish_json({'error': 'Filename is required.'})
+
+        # FIX: Additional security checks
+        if os.path.sep in filename or '..' in filename:
+            self.set_status(400)
+            return self.finish_json({'error': 'Invalid filename.'})
 
         file_path = os.path.join(FACES_DIR, filename)
+        
+        # FIX: Ensure path is within FACES_DIR
+        if not file_path.startswith(FACES_DIR):
+            self.set_status(400)
+            return self.finish_json({'error': 'Invalid file path.'})
 
         if not os.path.exists(file_path):
-            return self.finish_json({'error': 'File not found.'}, status_code=404)
+            self.set_status(404)  # FIX: Set status code separately
+            return self.finish_json({'error': 'File not found.'})
 
         try:
             os.remove(file_path)
             self._clear_cache()
             logging.info(f"Deleted face: {filename}")
             return self.finish_json({'status': 'deleted'})
-        except Exception as e:
+        except OSError as e:
             logging.error(f"Failed to delete face {filename}: {e}")
-            return self.finish_json({'error': 'Failed to delete file.'}, status_code=500)
+            self.set_status(500)  # FIX: Set status code separately
+            return self.finish_json({'error': 'Failed to delete file.'})
 
     def _clear_cache(self):
         """Deletes the encodings cache to force a refresh."""
@@ -87,7 +133,7 @@ class FacesHandler(BaseHandler):
             try:
                 os.remove(ENCODINGS_CACHE_PATH)
                 logging.info("Cleared face encodings cache.")
-            except Exception as e:
+            except OSError as e:
                 logging.error(f"Failed to clear face encodings cache: {e}")
 
 
