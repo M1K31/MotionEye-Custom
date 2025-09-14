@@ -13,7 +13,12 @@ For development or debugging, you can run motionEye directly from the command li
     cd /path/to/motioneye
     ```
 
-2.  **Run the startserver command:**
+2.  **Update to the latest code:** Before launching, it's a good practice to ensure you have the latest version of the code to avoid issues that have already been fixed.
+    ```sh
+    git pull
+    ```
+
+3.  **Run the startserver command:**
     ```sh
     python3 -m motioneye.meyectl startserver
     ```
