@@ -27,6 +27,9 @@ mkdir -p /var/log
 touch /var/log/motioneye.log
 chmod 664 /var/log/motioneye.log
 
+echo "--- Creating working directory [/usr/local/share/motioneye] ---"
+mkdir -p /usr/local/share/motioneye
+
 echo "--- Installing launchd service file [motioneye.plist] ---"
 # Unload the service if it's already running to ensure a clean start
 if [ -f /Library/LaunchDaemons/com.motioneye-project.motioneye.plist ]; then
