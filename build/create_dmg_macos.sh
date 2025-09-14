@@ -7,6 +7,13 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
+# Validate that motion binary exists and is executable
+if [ ! -x "$MOTION_BINARY" ]; then
+    echo "ERROR: motion binary not found or not executable at $MOTION_BINARY."
+    echo "Please run build_motion_macos.sh first."
+    exit 1
+fi
+
 APP_NAME="motionEye"
 VERSION=$(python3 -c "import motioneye; print(motioneye.VERSION)")
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
