@@ -1282,7 +1282,7 @@ def motion_camera_ui_to_dict(ui, prev_config=None):
 
     # picture save
     on_picture_save = [f"{meyectl.find_command('relayevent')} picture_save %t %f"]
-    if ui['opencv_enabled']:
+    if ui.get('opencv_enabled'):
         on_picture_save.append(f"python3 {meyectl.find_command('opencv_processor')} %f {settings.CONF_PATH}")
 
     if ui['web_hook_storage_enabled']:
