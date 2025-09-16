@@ -73,6 +73,10 @@ If you are a developer and you want to run motionEye without installing it as a 
     ```
     The server will be running in the foreground and will be accessible at `http://localhost:8765`.
 
+# Starting and Stopping the Server
+
+For detailed instructions on how to start and stop the motionEye server, for both development and production environments, please see [`LAUNCH.md`](./LAUNCH.md).
+
 # Upgrade
 
 ### For Users (from PyPI)
