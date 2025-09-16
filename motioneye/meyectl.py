@@ -25,6 +25,7 @@ import sys
 import os
 import signal
 import subprocess
+import time
 from shlex import quote
 
 import babel
@@ -55,6 +56,7 @@ def cleanup_camera_resources():
         print("Camera cleanup complete!")
     except Exception as e:
         print(f"Cleanup warning: {e}")
+
 
 # loading translations
 def load_l10n():
