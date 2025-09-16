@@ -978,6 +978,13 @@ function initUI() {
     $('div#backupButton').on('click', doBackup);
     $('div#restoreButton').on('click', doRestore);
 
+    /* manage faces button */
+    $('div#manageFacesButton').on('click', function () {
+        var url = basePath + 'faces.html';
+        url = addAuthParams('GET', url);
+        window.open(url, '_blank');
+    });
+
     /* test buttons */
     $('div#uploadTestButton').on('click', doTestUpload);
     $('div#emailTestButton').on('click', doTestEmail);
