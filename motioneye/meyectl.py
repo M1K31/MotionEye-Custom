@@ -35,7 +35,28 @@ from motioneye import config, settings
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-# ŝarĝante tradukojn
+def cleanup_camera_resources():
+    """Clean up camera resources and motion processes"""
+    try:
+        print("Cleaning up camera resources...")
+        
+        # Kill motion processes
+        subprocess.run(['pkill', '-f', 'motion'], check=False)
+        time.sleep(1)
+        
+        # Kill any remaining camera processes
+        subprocess.run(['pkill', '-f', 'python.*motion'], check=False)
+        subprocess.run(['pkill', '-f', 'python.*camera'], check=False)
+        
+        # Reset camera module
+        subprocess.run(['modprobe', '-r', 'uvcvideo'], check=False)
+        subprocess.run(['modprobe', 'uvcvideo'], check=False)
+        
+        print("Camera cleanup complete!")
+    except Exception as e:
+        print(f"Cleanup warning: {e}")
+
+# loading translations
 def load_l10n():
     locale.setlocale(locale.LC_ALL, '')
     pathname = os.path.dirname(__file__)
@@ -362,6 +383,12 @@ def check_and_kill_existing_processes():
         sys.exit(0)
 
 
+def signal_handler(sig, frame):
+    print("\nReceived interrupt signal, cleaning up...")
+    cleanup_camera_resources()
+    sys.exit(0)
+
+
 def main():
     for a in sys.argv:
         if a == '-v':
@@ -377,6 +404,9 @@ def main():
         check_and_kill_existing_processes()
 
     arg_parser = make_arg_parser(command)
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
 
     load_l10n()
 
