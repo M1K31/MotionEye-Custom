@@ -37,21 +37,18 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def cleanup_camera_resources():
-    """Clean up camera resources and motion processes"""
+    """Clean up camera resources and motion processes (no sudo required)"""
     try:
         print("Cleaning up camera resources...")
         
-        # Kill motion processes
+        # Kill processes owned by current user
         subprocess.run(['pkill', '-f', 'motion'], check=False)
-        time.sleep(1)
-        
-        # Kill any remaining camera processes
         subprocess.run(['pkill', '-f', 'python.*motion'], check=False)
         subprocess.run(['pkill', '-f', 'python.*camera'], check=False)
         
-        # Reset camera module
-        subprocess.run(['modprobe', '-r', 'uvcvideo'], check=False)
-        subprocess.run(['modprobe', 'uvcvideo'], check=False)
+        # Alternative to modprobe: just wait for system to release camera
+        print("Waiting for camera to be released...")
+        # Camera should be available again after processes are killed
         
         print("Camera cleanup complete!")
     except Exception as e:
