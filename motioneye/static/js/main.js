@@ -979,7 +979,7 @@ function initUI() {
     $('div#restoreButton').on('click', doRestore);
 
     /* manage faces button */
-    $('div#manageFacesButton').on('click', function () {
+    $('.settings-container').on('click', 'div#manageFacesButton', function () {
         var url = basePath + 'faces.html';
         url = addAuthParams('GET', url);
         window.open(url, '_blank');
