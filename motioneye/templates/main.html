@@ -428,6 +428,21 @@
                             <td class="settings-item-value"><input type="text" class="styled storage camera-config" id="rootDirectoryEntry"></td>
                             <td><span class="help-mark" title="{{ _("la radika vojo (sur la elektita stokada aparato), kie la dosieroj estos konservitaj") }}">?</span></td>
                         </tr>
+                        <tr class="settings-item" strip="true" depends="personDetection">
+                            <td class="settings-item-label"><span class="settings-item-label">Known Persons Path</span></td>
+                            <td class="settings-item-value"><input type="text" class="styled storage camera-config" id="knownPersonsPathEntry" placeholder="e.g. /var/lib/motioneye/known_persons"></td>
+                            <td><span class="help-mark" title="The directory where images of known persons will be saved. Leave blank to use the Root Directory.">?</span></td>
+                        </tr>
+                        <tr class="settings-item" strip="true" depends="personDetection">
+                            <td class="settings-item-label"><span class="settings-item-label">Unknown Persons Path</span></td>
+                            <td class="settings-item-value"><input type="text" class="styled storage camera-config" id="unknownPersonsPathEntry" placeholder="e.g. /var/lib/motioneye/unknown_persons"></td>
+                            <td><span class="help-mark" title="The directory where images of unknown persons will be saved. Leave blank to use the Root Directory.">?</span></td>
+                        </tr>
+                        <tr class="settings-item" strip="true" depends="animalDetection">
+                            <td class="settings-item-label"><span class="settings-item-label">Animals Path</span></td>
+                            <td class="settings-item-value"><input type="text" class="styled storage camera-config" id="animalPathEntry" placeholder="e.g. /var/lib/motioneye/animals"></td>
+                            <td><span class="help-mark" title="The directory where images of animals will be saved. Leave blank to use the Root Directory.">?</span></td>
+                        </tr>
                         <tr class="settings-item" depends="storageDevice=network-share">
                             <td class="settings-item-label"><span class="settings-item-label"></span></td>
                             <td class="settings-item-value"><div class="button normal-button test-button" id="networkShareTestButton">{{ _("Testi la reton dosierujon") }}</div></td>
@@ -1036,6 +1051,19 @@
                             <td class="settings-item-value"><input type="checkbox" class="styled motion-detection camera-config" id="createDebugMediaSwitch"></td>
                             <td><span class="help-mark" title="{{ _("Kiam ebligite, kreas specialajn filmojn kaj bildojn, kiuj helpas elpurigi problemojn de moviĝo-detekto.") }}">?</span></td>
                         </tr>
+                        <tr class="settings-item">
+                            <td colspan="100"><div class="settings-item-separator"></div></td>
+                        </tr>
+                        <tr class="settings-item">
+                            <td class="settings-item-label"><span class="settings-item-label">Enable Person Detection</span></td>
+                            <td class="settings-item-value"><input type="checkbox" class="styled motion-detection camera-config" id="personDetectionSwitch"></td>
+                            <td><span class="help-mark" title="Enable this to detect persons in the captured images. This enables facial recognition and the person-specific folder sorting.">?</span></td>
+                        </tr>
+                        <tr class="settings-item">
+                            <td class="settings-item-label"><span class="settings-item-label">Enable Animal Detection</span></td>
+                            <td class="settings-item-value"><input type="checkbox" class="styled motion-detection camera-config" id="animalDetectionSwitch"></td>
+                            <td><span class="help-mark" title="Enable this to detect animals in the captured images.">?</span></td>
+                        </tr>
                         {% for config in camera_sections.get('motion-detection', {}).get('configs', []) %}
                             {{config_item(config)}}
                         {% endfor %}
@@ -1131,6 +1159,14 @@
                         <tr class="settings-item" required="true" depends="telegramNotificationsEnabled motionDetectionEnabled" strip="true">
                             <td class="settings-item-label"><a href="https://core.telegram.org/bots#6-botfather" target="_blank"><div class="button normal-button test-button" id="apiInstructionButton" style="opacity: 1; display: inline-block;">{{ _("API-Informoj") }}</div></a></td>
                             <td class="settings-item-label"><div class="button normal-button test-button" id="telegramTestButton" style="opacity: 1; display: inline-block;">{{ _("Testo") }}</div></td>
+                        </tr>
+                        <tr class="settings-item" depends="motionDetectionEnabled animalDetection">
+                            <td colspan="100"><div class="settings-item-separator"></div></td>
+                        </tr>
+                        <tr class="settings-item" depends="motionDetectionEnabled animalDetection">
+                            <td class="settings-item-label"><span class="settings-item-label">Notify on Animal Detection</span></td>
+                            <td class="settings-item-value"><input type="checkbox" class="styled notifications camera-config" id="notifyOnAnimalDetectionSwitch"></td>
+                            <td><span class="help-mark" title="Enable this to send a notification when an animal is detected (uses the same email/Telegram settings).">?</span></td>
                         </tr>
                         <tr class="settings-item" depends="motionDetectionEnabled">
                             <td colspan="100"><div class="settings-item-separator"></div></td>

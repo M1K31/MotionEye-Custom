@@ -1279,11 +1279,28 @@ def motion_camera_ui_to_dict(ui, prev_config=None):
     data['on_movie_end'] = '; '.join(on_movie_end)
 
     data['@opencv_enabled'] = ui.get('opencv_enabled', False)
+    data['@animal_detection'] = ui.get('animal_detection', False)
+    data['@person_detection'] = ui.get('person_detection', False)
+    data['@known_persons_path'] = ui.get('known_persons_path', '')
+    data['@unknown_persons_path'] = ui.get('unknown_persons_path', '')
+    data['@animal_path'] = ui.get('animal_path', '')
+    data['@notify_on_animal_detection'] = ui.get('notify_on_animal_detection', False)
 
     # picture save
     on_picture_save = [f"{meyectl.find_command('relayevent')} picture_save %t %f"]
     if ui.get('opencv_enabled'):
-        on_picture_save.append(f"python3 {meyectl.find_command('opencv_processor')} %f {settings.CONF_PATH}")
+        # Construct the command with all necessary arguments for the processor script
+        opencv_cmd = (
+            f"python3 {meyectl.find_command('opencv_processor')} %f {settings.CONF_PATH}"
+            f" --camera-id {prev_config.get('@id', '')}"
+            f" --animal-detection {str(ui.get('animal_detection', False)).lower()}"
+            f" --person-detection {str(ui.get('person_detection', False)).lower()}"
+            f" --notify-on-animal {str(ui.get('notify_on_animal_detection', False)).lower()}"
+            f" --known-path \"{ui.get('known_persons_path', '')}\""
+            f" --unknown-path \"{ui.get('unknown_persons_path', '')}\""
+            f" --animal-path \"{ui.get('animal_path', '')}\""
+        )
+        on_picture_save.append(opencv_cmd)
 
     if ui['web_hook_storage_enabled']:
         url = sub('\\s', '+', ui['web_hook_storage_url'])
@@ -1415,6 +1432,11 @@ def motion_camera_dict_to_ui(data):
         'create_debug_media': data['movie_output_motion']
         or data['picture_output_motion'],
         'opencv_enabled': data['@opencv_enabled'],
+        'animal_detection': data['@animal_detection'],
+        'person_detection': data['@person_detection'],
+        'known_persons_path': data['@known_persons_path'],
+        'unknown_persons_path': data['@unknown_persons_path'],
+        'animal_path': data['@animal_path'],
         # motion notifications
         'email_notifications_enabled': False,
         'telegram_notifications_enabled': False,
@@ -2317,6 +2339,12 @@ def _set_default_motion_camera(camera_id, data):
     data.setdefault('on_movie_end', '')
     data.setdefault('on_picture_save', '')
     data.setdefault('@opencv_enabled', False)
+    data.setdefault('@animal_detection', False)
+    data.setdefault('@person_detection', False)
+    data.setdefault('@known_persons_path', '')
+    data.setdefault('@unknown_persons_path', '')
+    data.setdefault('@animal_path', '')
+    data.setdefault('@notify_on_animal_detection', False)
 
 
 def _set_default_simple_mjpeg_camera(camera_id, data):

@@ -740,6 +740,8 @@ function initUI() {
     $('#preservePicturesSelect').change(updateConfigUI);
     $('#moviesEnabledSwitch').change(checkMinimizeSection).change(updateConfigUI);
     $('#motionDetectionEnabledSwitch').change(checkMinimizeSection).change(updateConfigUI);
+    $('#personDetectionSwitch').change(updateConfigUI);
+    $('#animalDetectionSwitch').change(updateConfigUI);
     $('#preserveMoviesSelect').change(updateConfigUI);
     $('#moviePassthroughSwitch').change(updateConfigUI);
     $('#workingScheduleEnabledSwitch').change(checkMinimizeSection).change(updateConfigUI);
@@ -1971,6 +1973,9 @@ function cameraUi2Dict() {
         'network_username': $('#networkUsernameEntry').val(),
         'network_password': $('#networkPasswordEntry').val(),
         'root_directory': $('#rootDirectoryEntry').val(),
+        'known_persons_path': $('#knownPersonsPathEntry').val(),
+        'unknown_persons_path': $('#unknownPersonsPathEntry').val(),
+        'animal_path': $('#animalPathEntry').val(),
         'upload_enabled': $('#uploadEnabledSwitch')[0].checked,
         'upload_picture': $('#uploadPictureSwitch')[0].checked,
         'upload_movie': $('#uploadMovieSwitch')[0].checked,
@@ -2050,8 +2055,11 @@ function cameraUi2Dict() {
         'motion_mask_lines': $('#motionMaskLinesEntry').val() ? $('#motionMaskLinesEntry').val().split(',').map(function (l) {return parseInt(l);}) : [],
         'show_frame_changes': $('#showFrameChangesSwitch')[0].checked,
         'create_debug_media': $('#createDebugMediaSwitch')[0].checked,
+        'person_detection': $('#personDetectionSwitch')[0].checked,
+        'animal_detection': $('#animalDetectionSwitch')[0].checked,
 
         /* motion notifications */
+        'notify_on_animal_detection': $('#notifyOnAnimalDetectionSwitch')[0].checked,
         'email_notifications_enabled': $('#emailNotificationsEnabledSwitch')[0].checked,
         'email_notifications_from': $('#emailFromEntry').val(),
         'email_notifications_addresses': $('#emailAddressesEntry').val(),
@@ -2297,6 +2305,9 @@ function dict2CameraUi(dict) {
     $('#networkUsernameEntry').val(dict['network_username']); markHideIfNull('network_username', 'networkUsernameEntry');
     $('#networkPasswordEntry').val(dict['network_password']); markHideIfNull('network_password', 'networkPasswordEntry');
     $('#rootDirectoryEntry').val(dict['root_directory']); markHideIfNull('root_directory', 'rootDirectoryEntry');
+    $('#knownPersonsPathEntry').val(dict['known_persons_path']); markHideIfNull('known_persons_path', 'knownPersonsPathEntry');
+    $('#unknownPersonsPathEntry').val(dict['unknown_persons_path']); markHideIfNull('unknown_persons_path', 'unknownPersonsPathEntry');
+    $('#animalPathEntry').val(dict['animal_path']); markHideIfNull('animal_path', 'animalPathEntry');
     var percent = 0;
     if (dict['disk_total'] != 0) {
         percent = parseInt(dict['disk_used'] * 100 / dict['disk_total']);
@@ -2430,9 +2441,12 @@ function dict2CameraUi(dict) {
     $('#motionMaskLinesEntry').val((dict['motion_mask_lines'] || []).join(',')); markHideIfNull('motion_mask_lines', 'motionMaskLinesEntry');
     $('#showFrameChangesSwitch')[0].checked = dict['show_frame_changes']; markHideIfNull('show_frame_changes', 'showFrameChangesSwitch');
     $('#createDebugMediaSwitch')[0].checked = dict['create_debug_media']; markHideIfNull('create_debug_media', 'createDebugMediaSwitch');
+    $('#personDetectionSwitch')[0].checked = dict['person_detection']; markHideIfNull('person_detection', 'personDetectionSwitch');
+    $('#animalDetectionSwitch')[0].checked = dict['animal_detection']; markHideIfNull('animal_detection', 'animalDetectionSwitch');
 
     /* motion notifications */
     $('#emailNotificationsEnabledSwitch')[0].checked = dict['email_notifications_enabled']; markHideIfNull('email_notifications_enabled', 'emailNotificationsEnabledSwitch');
+    $('#notifyOnAnimalDetectionSwitch')[0].checked = dict['notify_on_animal_detection']; markHideIfNull('notify_on_animal_detection', 'notifyOnAnimalDetectionSwitch');
     $('#emailFromEntry').val(dict['email_notifications_from']);
     $('#emailAddressesEntry').val(dict['email_notifications_addresses']);
     $('#smtpServerEntry').val(dict['email_notifications_smtp_server']);

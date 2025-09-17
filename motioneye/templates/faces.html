@@ -7,6 +7,11 @@
     <h1>Familiar Faces</h1>
     <p>Manage the faces that motionEye recognizes. Upload a clear, front-facing picture of a person.</p>
 
+    <div id="unfamiliar-face-container">
+        <h2>Unfamiliar Face Log</h2>
+        <p>Last unfamiliar face detected: <strong id="last-unfamiliar-face">Never</strong></p>
+    </div>
+
     <div id="faces-list-container">
         <h2>Known Faces</h2>
         <ul id="faces-list">
@@ -44,9 +49,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function loadFaces() {
         facesList.innerHTML = '<li class="loading">Loading...</li>';
+        const lastUnfamiliarFaceEl = document.getElementById('last-unfamiliar-face');
+
         fetch('/faces')
             .then(response => response.json())
-            .then(faces => {
+            .then(data => {
+                // Handle last unfamiliar face
+                if (data.last_unfamiliar_face) {
+                    const d = new Date(data.last_unfamiliar_face);
+                    lastUnfamiliarFaceEl.textContent = d.toLocaleString();
+                } else {
+                    lastUnfamiliarFaceEl.textContent = 'Never';
+                }
+
+                // Handle known faces list
+                const faces = data.faces;
                 facesList.innerHTML = '';
                 if (faces.length === 0) {
                     facesList.innerHTML = '<li>No faces have been added yet.</li>';

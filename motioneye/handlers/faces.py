@@ -17,22 +17,36 @@ ENCODINGS_CACHE_PATH = os.path.join(FACES_DIR, 'known_faces.pkl')
 class FacesHandler(BaseHandler):
     @BaseHandler.auth(admin=True)
     def get(self):
-        """List the known faces."""
-        if not os.path.exists(FACES_DIR):
-            return self.finish_json([])
+        """List the known faces and the last unfamiliar face event."""
 
+        # Get last unfamiliar face timestamp
+        last_unfamiliar_face = None
+        timestamp_path = os.path.join(settings.CONF_PATH, 'last_unfamiliar_face.txt')
+        if os.path.exists(timestamp_path):
+            try:
+                with open(timestamp_path, 'r') as f:
+                    last_unfamiliar_face = f.read().strip()
+            except Exception as e:
+                logging.error(f"Failed to read unfamiliar face timestamp: {e}")
+
+        # Get list of known faces
         faces = []
-        try:
-            for filename in os.listdir(FACES_DIR):
-                if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
-                    name = os.path.splitext(filename)[0]
-                    faces.append({'name': name, 'filename': filename})
-        except OSError as e:
-            logging.error(f"Failed to list faces directory: {e}")
-            self.set_status(500)
-            return self.finish_json({'error': 'Failed to access faces directory.'})
+        if os.path.exists(FACES_DIR):
+            try:
+                for filename in os.listdir(FACES_DIR):
+                    if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+                        name = os.path.splitext(filename)[0]
+                        faces.append({'name': name, 'filename': filename})
+            except OSError as e:
+                logging.error(f"Failed to list faces directory: {e}")
+                self.set_status(500)
+                return self.finish_json({'error': 'Failed to access faces directory.'})
 
-        return self.finish_json(faces)
+        response = {
+            'faces': faces,
+            'last_unfamiliar_face': last_unfamiliar_face
+        }
+        return self.finish_json(response)
 
     @BaseHandler.auth(admin=True)
     def post(self):
