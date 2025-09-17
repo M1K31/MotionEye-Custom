@@ -1,1 +1,5 @@
 traduko.jar
+*.pyc
+__pycache__/
+/conf/prefs.json
+/meyectl.log

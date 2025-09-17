@@ -1,10 +1,8 @@
-
-    /* general */
+/* general */
 
 ::selection,
 ::-moz-selection,
 ::-webkit-selection {
-    background: #3498db;
 }
 
 option::selection,
@@ -18,14 +16,9 @@ input[type=checkbox].styled {
 }
 
 a {
-    color: #3498db;
     text-decoration: inherit;
     transition: color 0.1s ease;
     cursor: pointer;
-}
-
-a:ACTIVE {
-    color: #317CAD;
 }
 
 
@@ -40,20 +33,14 @@ div.button {
 }
 
 div.button.dialog {
-    background-color: #414141;
     min-width: 60px;
     height: 1.2em;
     line-height: 1.2em;
     text-align: center;
     padding: 0.2em 0.4em;
-    border: 1px solid #317CAD;
+    border: 1px solid;
     border-radius: 2px;
-    color: white;
     transition: all 0.1s ease;
-}
-
-div.button.dialog.default {
-    background-color: #317CAD;
 }
 
 div.button.mouse-effect {
@@ -69,10 +56,6 @@ div.button.mouse-effect:ACTIVE {
     opacity: 0.7;
 }
 
-div.icon.mouse-effect:ACTIVE {
-    background-color: rgba(0, 0, 0, 0.5);
-}
-
 
     /* check box */
 
@@ -81,9 +64,8 @@ div.check-box {
     position: relative;
     width: 2.5em;
     height: 1em;
-    border: 1px solid #317CAD;
+    border: 1px solid;
     border-radius: 2px;
-    color: #aaaaaa;
     vertical-align: middle;
     cursor: pointer;
     -webkit-user-select: none;
@@ -93,17 +75,10 @@ div.check-box {
     transition: all 0.2s ease;
 }
 
-div.check-box:FOCUS,
-div.check-box:HOVER {
-    border-color: #3498db;
-}
-
 div.check-box-button {
     width: 50%;
     height: 100%;
     left: 0;
-    background-color: #414141;
-    color: #aaaaaa;
     position: absolute;
     text-align: center;
     line-height: 1em;
@@ -118,13 +93,6 @@ span.check-box-text {
 
 div.check-box.on div.check-box-button {
     left: 50%;
-    background-color: #317CAD;
-    color: white;
-}
-
-div.check-box.on:FOCUS div.check-box-button,
-div.check-box.on:HOVER div.check-box-button {
-    background-color: #3498db;
 }
 
 
@@ -134,11 +102,9 @@ input[type=password].styled,
 input[type=text].styled,
 textarea.styled {
     width: 90%;
-    border: 1px solid #317CAD;
+    border: 1px solid;
     border-radius: 2px;
-    background-color: transparent;
     padding: 1px;
-    color: #dddddd;
     font-family: inherit;
     font-size: 0.8em;
     margin: 2px;
@@ -150,22 +116,6 @@ textarea.styled {
 
 textarea.styled {
     white-space: pre;
-}
-
-input[type=password].styled:FOCUS,
-input[type=text].styled:FOCUS,
-textarea.styled:FOCUS {
-    background-color: #414141;
-}
-
-input[type=password].styled:HOVER,
-input[type=password].styled:FOCUS,
-input[type=text].styled:HOVER,
-input[type=text].styled:FOCUS,
-textarea.styled:HOVER,
-textarea.styled:FOCUS {
-    border-color: #3498db;
-    color: white;
 }
 
 input[type=text].number {
@@ -186,7 +136,7 @@ input[type=text].time {
 }
 
 input[readonly] {
-    border: 1px solid #555 !important;
+    border: 1px solid !important;
 }
 
 
@@ -196,11 +146,9 @@ select.styled {
     -webkit-appearance: none;
     appearance: none;
     width: 90%;
-    border: 1px solid #317CAD;
+    border: 1px solid;
     border-radius: 2px;
-    background-color: transparent;
     padding: 1px 1.25em 1px 1px;
-    color: #dddddd;
     font-family: inherit;
     font-size: 0.8em;
     margin: 2px;
@@ -212,14 +160,7 @@ select.styled {
 }
 
 select.styled:FOCUS {
-    background-color: #414141;
     appearance: auto;
-}
-
-select.styled:HOVER,
-select.styled:FOCUS {
-    border-color: #3498db;
-    color: white;
 }
 
 .ff select.styled {
@@ -265,21 +206,12 @@ div.slider-bar {
 }
 
 div.slider-bar-inside {
-    border: 1px solid #317CAD;
+    border: 1px solid;
     height: 3px;
     position: relative;
     top: 3px;
     left: 7px;
     transition: all 0.1s ease;
-}
-
-div.slider:HOVER div.slider-bar-inside,
-div.slider:FOCUS div.slider-bar-inside {
-    border-color: #3498db;
-}
-
-div.slider:FOCUS div.slider-bar-inside {
-    background-color: #414141;
 }
 
 div.slider-cursor {
@@ -296,7 +228,6 @@ div.slider-cursor-label {
     font-size: 0.6em;
     margin-left: 1.5em;
     margin-top: 0.15em;
-    background: rgba(30, 30, 30, 0.8);
     vertical-align: top;
     padding: 1px 2px;
     border-radius: 3px;
@@ -309,7 +240,7 @@ div.slider-cursor-label {
 div.progress-bar-container {
     position: relative;
     height: 1em;
-    border: 1px solid #555;
+    border: 1px solid;
     vertical-align: middle;
     margin: 0 0.2em;
     text-align: center;
@@ -322,7 +253,6 @@ div.progress-bar-fill {
     top: 0;
     bottom: 0;
     width: 0%;
-    background-color: #555;
     transition: width 0.1s ease;
 }
 
@@ -343,7 +273,6 @@ div.modal-glass {
     right: 0;
     bottom: 0;
     left: 0;
-    background-color: black;
     opacity: 0;
 }
 
@@ -351,7 +280,6 @@ div.modal-container {
     position: fixed;
     display: none;
     z-index: 10001;
-    background-color: #313131;
     border-radius: 3px;
     opacity: 0;
     padding: 5px;
@@ -367,7 +295,6 @@ div.modal-title-bar {
 
 span.modal-title {
     display: inline-block;
-    color: white;
     font-size: 1.2em;
     line-height: 1.2em;
     max-width: 30em;
@@ -429,7 +356,7 @@ span.dialog-item-label {
 
 div.dialog-item-separator {
     height: 1px;
-    border-top: 1px solid #414141;
+    border-top: 1px solid;
     margin: 0.5em 1em;
 }
 
@@ -440,16 +367,11 @@ div.popup-message-container {
     position: fixed;
     display: none;
     z-index: 10002;
-    background-color: #313131;
     border-radius: 3px;
     opacity: 0;
     padding: 5px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
     top: 60px;
-}
-
-span.popup-message.info {
-    color: white;
 }
 
 span.popup-message.error {

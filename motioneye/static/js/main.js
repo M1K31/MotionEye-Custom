@@ -821,6 +821,10 @@ function initUI() {
         savePrefs();
     });
 
+    $('#themeSelect').change(function () {
+        savePrefs();
+    });
+
     /* various change handlers */
     $('#storageDeviceSelect').change(function () {
         $('#rootDirectoryEntry').val('/');
@@ -1763,7 +1767,8 @@ function prefsUi2Dict() {
         'fit_frames_vertically': $('#fitFramesVerticallySwitch')[0].checked,
         'layout_rows': parseInt($('#layoutRowsSlider').val()),
         'framerate_factor': $('#framerateDimmerSlider').val() / 100,
-        'resolution_factor': $('#resolutionDimmerSlider').val() / 100
+        'resolution_factor': $('#resolutionDimmerSlider').val() / 100,
+        'theme': $('#themeSelect').val()
     };
 
     return dict;
@@ -1775,6 +1780,7 @@ function dict2PrefsUi(dict) {
     $('#layoutRowsSlider').val(dict['layout_rows']);
     $('#framerateDimmerSlider').val(dict['framerate_factor'] * 100);
     $('#resolutionDimmerSlider').val(dict['resolution_factor'] * 100);
+    $('#themeSelect').val(dict['theme']);
 
     updateConfigUI();
 }
@@ -1792,6 +1798,9 @@ function applyPrefs(dict) {
     else {
         getPageContainer().removeClass('fit-frames-vertically');
     }
+
+    $('body').removeClass('theme-classic theme-dark theme-glass');
+    $('body').addClass('theme-' + dict['theme']);
 }
 
 function savePrefs() {
