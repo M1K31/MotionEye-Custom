@@ -58,7 +58,6 @@
     {% if frame %}
         <link rel="stylesheet" type="text/css" href="{{static_path}}css/frame.css?v={{version}}">
     {% endif %}
-    <link rel="stylesheet" type="text/css" href="{{static_path}}css/themes.css?v={{version}}">
 {% endblock %}
 
 {% block script %}
@@ -149,16 +148,6 @@
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("kadro-variatoro") }}</span></td>
                             <td class="settings-item-value"><input type="text" class="range styled prefs" id="framerateDimmerSlider"></td>
                             <td><span class="help-mark" title="{{ _("reduktas framfrekvencon por ŝpari retan larĝan bandon kaj trafikon (ne funkcias kun simplaj MJPEG-fotiloj)") }}">?</span></td>
-                        </tr>
-                        <tr class="settings-item">
-                            <td class="settings-item-label"><span class="settings-item-label">{{ _("Theme") }}</span></td>
-                            <td class="settings-item-value">
-                                <select class="styled prefs" id="themeSelect">
-                                    <option value="dark">{{ _("Dark") }}</option>
-                                    <option value="glass">{{ _("Glass") }}</option>
-                                </select>
-                            </td>
-                            <td><span class="help-mark" title="{{ _("Changes the UI theme.") }}">?</span></td>
                         </tr>
                         <tr class="settings-item" min="1" max="100" snap="0" ticks="1|20|40|60|80|100" decimals="0">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Rezolucio-variatoro") }}</span></td>
