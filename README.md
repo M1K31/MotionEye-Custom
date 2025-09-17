@@ -47,12 +47,7 @@ If you are a developer and you want to run motionEye without installing it as a 
 
 1.  **Install Dependencies:** Follow the dependency installation instructions in the "For Developers" section above. Make sure you have installed both the system packages (like `motion` and `ffmpeg`) and the Python packages (by running `pip install .`).
 
-2.  **Create Local Directories:** In the root of the project, create local directories to store your configuration, logs, and media files.
-    ```sh
-    mkdir -p conf run log media
-    ```
-
-3.  **Create a Local Configuration File:** You will need a configuration file to tell motionEye where to find your local directories.
+2.  **Create a Local Configuration File:** You will need a configuration file to tell motionEye where to find your local directories.
     *   First, get the full path to your project directory by running `pwd`.
     *   Create a new file named `conf/motioneye.conf`.
     *   Add the following content to the file, replacing `/path/to/your/project` with the actual path you got from `pwd`:
@@ -67,7 +62,7 @@ If you are a developer and you want to run motionEye without installing it as a 
         log_level info
         ```
 
-4.  **Run the Server:** Now you can start the server using your local configuration:
+3.  **Run the Server:** Now you can start the server using your local configuration:
     ```sh
     python3 -m motioneye.meyectl startserver -c conf/motioneye.conf
     ```
