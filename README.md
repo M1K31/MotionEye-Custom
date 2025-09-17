@@ -47,7 +47,7 @@ If you are a developer and you want to run motionEye without installing it as a 
 
 1.  **Install Dependencies:** Follow the dependency installation instructions in the "For Developers" section above. Make sure you have installed both the system packages (like `motion` and `ffmpeg`) and the Python packages (by running `pip install .`).
 
-2.  **Create a Local Configuration File:** You will need a configuration file to tell motionEye where to find your local directories.
+2.  **Create a Local Configuration File:** You will need a configuration file to tell motionEye where to find your local directories. There is a file that matches this already provded in the project, it assumes you will use the project directory. Edit as needed.
     *   First, get the full path to your project directory by running `pwd`.
     *   Create a new file named `conf/motioneye.conf`.
     *   Add the following content to the file, replacing `/path/to/your/project` with the actual path you got from `pwd`:
