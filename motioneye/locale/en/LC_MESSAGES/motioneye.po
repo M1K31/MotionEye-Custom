@@ -139,7 +139,7 @@ msgstr "Frame Rate Dimmer"
 
 #: motioneye/templates/main.html:150
 msgid "reduktas framfrekvencon por ŝpari retan larĝan bandon kaj trafikon (ne funkcias kun simplaj MJPEG-fotiloj)"
-msgstr "dims the global frame rate to save network bandwidth and traffic (doesn't work on simple MJPEG cameras)"
+msgstr "Reduces the frame rate of all cameras to save network bandwidth and processing power. This does not affect simple MJPEG cameras."
 
 #: motioneye/templates/main.html:153
 msgid "Rezolucio-variatoro"
@@ -147,7 +147,7 @@ msgstr "Resolution Dimmer"
 
 #: motioneye/templates/main.html:155
 msgid "reduktas la efektivan rezolucion de ĉiuj fotiloj por ŝpari retan larĝan bandon kaj trafikon (ne funkcias en simplaj MJPEG-fotiloj)"
-msgstr "dims the actual resolution of all cameras to save network bandwidth and traffic (doesn't work on simple MJPEG cameras)"
+msgstr "Reduces the resolution of all cameras to save network bandwidth and processing power. This does not affect simple MJPEG cameras."
 
 #: motioneye/templates/main.html:161
 msgid "ĝeneralaj parametroj, komunaj al ĉiuj fotiloj"
@@ -171,7 +171,7 @@ msgstr "Admin Username"
 
 #: motioneye/templates/main.html:178
 msgid "la uzantnomo uzata por agordi la sistemon"
-msgstr "the username to be used for configuring the system"
+msgstr "The username for the administrator account, used for system configuration."
 
 #: motioneye/templates/main.html:181 motioneye/templates/main.html:191
 #: motioneye/templates/main.html:521
@@ -180,7 +180,7 @@ msgstr "Password"
 
 #: motioneye/templates/main.html:183
 msgid "pasvorto de administranto"
-msgstr "administrator's password"
+msgstr "The password for the administrator account."
 
 #: motioneye/templates/main.html:186
 msgid "Observanto"
@@ -188,11 +188,11 @@ msgstr "Surveillance Username"
 
 #: motioneye/templates/main.html:188
 msgid "la uzantnomo por uzi por la monitorado"
-msgstr "the username to be used for video surveillance"
+msgstr "The username for a non-administrator account, used for viewing cameras and events."
 
 #: motioneye/templates/main.html:193
 msgid "la pasvorto de la uzanto de monitorado (lasu blankan por monitorado sen pasvorto)"
-msgstr "the password for the surveillance user (leave empty for passwordless surveillance)"
+msgstr "The password for the surveillance user. Leave this field empty to allow access without a password."
 
 #: motioneye/templates/main.html:202
 msgid "motionEye Versio"
@@ -593,7 +593,7 @@ msgstr "Access Key"
 
 #: motioneye/templates/main.html:542
 msgid "The AWS access key used to authenticate with the upload service"
-msgstr "The AWS Access Key Used To Authenticate with the Upload Service"
+msgstr "The AWS access key for your S3-compatible service. This is required for authenticating and uploading files."
 
 #: motioneye/templates/main.html:545
 msgid "Sekreta Alira Ŝlosilo"
@@ -1538,3 +1538,43 @@ msgstr "second"
 #: motioneye/utils/dtconv.py:153
 msgid "minus"
 msgstr "minus"
+#: motioneye/templates/main.html:249
+msgid "Manage the list of known faces for recognition."
+msgstr "Manage the list of familiar faces for person detection and recognition."
+
+#: motioneye/templates/main.html:434
+msgid "The directory where images of known persons will be saved. Leave blank to use the Root Directory."
+msgstr "Specify the directory for storing images of recognized individuals. If left blank, the system's root directory will be used."
+
+#: motioneye/templates/main.html:439
+msgid "The directory where images of unknown persons will be saved. Leave blank to use the Root Directory."
+msgstr "Specify the directory for storing images of unrecognized individuals. If left blank, the system's root directory will be used."
+
+#: motioneye/templates/main.html:444
+msgid "The directory where images of animals will be saved. Leave blank to use the Root Directory."
+msgstr "Specify the directory for storing images of detected animals. If left blank, the system's root directory will be used."
+
+#: motioneye/templates/main.html:363
+msgid "click this button to clear the current mask"
+msgstr "Removes the currently configured privacy or motion detection mask."
+
+#: motioneye/templates/main.html:1060
+msgid "Enable this to detect persons in the captured images. This enables facial recognition and the person-specific folder sorting."
+msgstr "Enable this to detect people in captured images. This is required for facial recognition and sorting images into person-specific folders."
+
+#: motioneye/templates/main.html:1065
+msgid "Enable this to detect animals in the captured images."
+msgstr "Enable this to detect animals in captured images."
+
+#: motioneye/templates/main.html:1169
+msgid "Enable this to send a notification when an animal is detected (uses the same email/Telegram settings)."
+msgstr "Enable this to send a notification when an animal is detected. This uses the same email and Telegram settings as motion notifications."
+
+#: motioneye/templates/main.html:1222
+msgid "enable this if you want a URL to be requested whenever a motion event ends"
+msgstr "Enable this to trigger a webhook (call a URL) when a motion event has finished."
+
+#: motioneye/templates/main.html:1227
+#, python-format
+msgid "a single URL to be requested when motion event ends; the following special tokens are accepted: %Y = year, %m = month, %d = day, %H = hour, %M = minute, %S = second, %q = frame number, %v = event number"
+msgstr "The URL to call when a motion event ends. You can use special tokens like %Y (year), %m (month), %d (day), %H (hour), %M (minute), %S (second), %q (frame number), and %v (event number) to pass event details."
