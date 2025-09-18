@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.motioneye-project.motioneye</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/meyectl</string>
+        <string>startserver</string>
+        <string>-c</string>
+        <string>/usr/local/etc/motioneye/motioneye.conf</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardErrorPath</key>
+    <string>/var/log/motioneye.log</string>
+    <key>StandardOutPath</key>
+    <string>/var/log/motioneye.log</string>
+    <key>WorkingDirectory</key>
+    <string>/usr/local/share/motioneye</string>
+</dict>
+</plist>
