@@ -6,6 +6,7 @@ setup.py
 motioneye/__init__.py
 motioneye/cleanup.py
 motioneye/config.py
+motioneye/face_recognition_manager.py
 motioneye/homeassistant.py
 motioneye/mediafiles.py
 motioneye/meyectl.py
@@ -61,6 +62,7 @@ motioneye/handlers/picture.py
 motioneye/handlers/power.py
 motioneye/handlers/prefs.py
 motioneye/handlers/relay_event.py
+motioneye/handlers/relay_event.py.backup
 motioneye/handlers/update.py
 motioneye/handlers/version.py
 motioneye/locale/ar/LC_MESSAGES/motioneye.mo

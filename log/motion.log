@@ -1,0 +1,13 @@
+[0:motion] [ALR] [ALL] conf_load: Configfile conf/motion.conf not found - trying defaults.: No such file or directory
+[0:motion] [NTC] [ALL] conf_load: Processing thread 0 - config file /home/mikel/Documents/VSProjects/MotionEye-Custom/conf/motion.conf
+[0:motion] [NTC] [ALL] config_camera: Processing camera config file camera-1.conf
+[0:motion] [NTC] [ALL] motion_startup: Logging to syslog
+[0:motion] [NTC] [ALL] motion_startup: Motion 4.7.0 Started
+[0:motion] [NTC] [ALL] motion_startup: Using default log type (ALL)
+[0:motion] [NTC] [ALL] motion_startup: Using log type (ALL) log level (WRN)
+[1:ml1:Camera1] [ERR] [ENC] ffmpeg_set_codec: Could not open codec Encoder not found
+[1:ml1:Camera1] [ERR] [ENC] ffmpeg_open: Failed to allocate codec!
+[1:ml1:Camera1] [ERR] [EVT] event_ffmpeg_newfile: Error opening context for movie output.
+[1:ml1:Camera1] [ERR] [ENC] ffmpeg_set_codec: Could not open codec Encoder not found
+[1:ml1:Camera1] [ERR] [ENC] ffmpeg_open: Failed to allocate codec!
+[1:ml1:Camera1] [ERR] [EVT] event_ffmpeg_newfile: Error opening context for movie output.
