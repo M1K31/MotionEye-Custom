@@ -1,0 +1,5 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/motioneye_env/bin/python",
+  "python.pythonPath": "${workspaceFolder}/motioneye_env/bin/python",
+  "python.terminal.activateEnvironment": true
+}

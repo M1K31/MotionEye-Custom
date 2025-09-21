@@ -20,6 +20,13 @@ import logging
 from motioneye import config, mediafiles, motionctl, tasks, uploadservices, utils
 from motioneye.handlers.base import BaseHandler
 
+try:
+    from motioneye.face_recognition_manager import get_face_manager
+    FACE_RECOGNITION_AVAILABLE = True
+except ImportError:
+    FACE_RECOGNITION_AVAILABLE = False
+    logging.warning("Face recognition not available - face_recognition_manager import failed")
+
 __all__ = ('RelayEventHandler',)
 
 
@@ -66,6 +73,9 @@ class RelayEventHandler(BaseHandler):
         elif event == 'movie_end':
             filename = self.get_argument('filename')
 
+            # Process face recognition
+            self.process_face_recognition(camera_id, filename, camera_config)
+
             # generate preview (thumbnail)
             tasks.add(
                 5,
@@ -82,6 +92,9 @@ class RelayEventHandler(BaseHandler):
         elif event == 'picture_save':
             filename = self.get_argument('filename')
 
+            # Process face recognition
+            self.process_face_recognition(camera_id, filename, camera_config)
+
             # upload to external service
             if camera_config['@upload_enabled'] and camera_config['@upload_picture']:
                 self.upload_media_file(filename, camera_id, camera_config)
@@ -90,6 +103,37 @@ class RelayEventHandler(BaseHandler):
             logging.warning('unknown event %s' % event)
 
         self.finish_json()
+
+
+    def process_face_recognition(self, camera_id, filename, camera_config):
+         """Process face recognition for motion events"""
+         if not FACE_RECOGNITION_AVAILABLE:
+            return
+    
+    try:
+        face_manager = get_face_manager()
+        if face_manager and face_manager.is_available():
+            # Process face recognition
+            faces = face_manager.process_motion_event(camera_id, filename)
+            
+            if faces:
+                recognized_names = [
+                    face['name'] for face in faces 
+                    if face['name'] != 'Unknown' and face['confidence'] >= 0.6
+                ]
+                
+                if recognized_names:
+                    logging.info(f"Camera {camera_id}: Face recognition detected - {', '.join(recognized_names)}")
+                    
+                    # You can add additional actions here:
+                    # - Send notifications
+                    # - Save to database
+                    # - Trigger webhooks
+                    # - Update face detection logs
+                    
+    except Exception as e:
+        logging.error(f"Face recognition error for camera {camera_id}: {e}")
+
 
     def upload_media_file(self, filename, camera_id, camera_config):
         service_name = camera_config['@upload_service']
