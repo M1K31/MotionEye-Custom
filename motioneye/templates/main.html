@@ -246,7 +246,7 @@
                         <tr class="settings-item">
                             <td class="settings-item-label"><span class="settings-item-label">Familiar Faces</span></td>
                             <td class="settings-item-value"><div id="manageFacesButton" class="button normal-button">Manage Faces</div></td>
-                            <td><span class="help-mark" title="Manage the list of known faces for recognition.">?</span></td>
+                            <td><span class="help-mark" title="{{ _("Manage the list of known faces for recognition.") }}">?</span></td>
                         </tr>
                     </table>
 
@@ -360,7 +360,7 @@
                         <tr class="settings-item" depends="privacyMask">
                             <td class="settings-item-label"><span class="settings-item-label"></span></td>
                             <td class="settings-item-value"><div class="button normal-button clear-mask-button" id="privacyMaskClearButton">Clear Mask</div></td>
-                            <td><span class="help-mark" title="click this button to clear the current mask">?</span></td>
+                            <td><span class="help-mark" title="{{ _("click this button to clear the current mask") }}">?</span></td>
                         </tr>
                         <tr class="settings-item">
                             <td colspan="100"><div class="settings-item-separator"></div></td>
@@ -431,17 +431,17 @@
                         <tr class="settings-item" strip="true" depends="personDetection">
                             <td class="settings-item-label"><span class="settings-item-label">Known Persons Path</span></td>
                             <td class="settings-item-value"><input type="text" class="styled storage camera-config" id="knownPersonsPathEntry" placeholder="e.g. /var/lib/motioneye/known_persons"></td>
-                            <td><span class="help-mark" title="The directory where images of known persons will be saved. Leave blank to use the Root Directory.">?</span></td>
+                            <td><span class="help-mark" title="{{ _("The directory where images of known persons will be saved. Leave blank to use the Root Directory.") }}">?</span></td>
                         </tr>
                         <tr class="settings-item" strip="true" depends="personDetection">
                             <td class="settings-item-label"><span class="settings-item-label">Unknown Persons Path</span></td>
                             <td class="settings-item-value"><input type="text" class="styled storage camera-config" id="unknownPersonsPathEntry" placeholder="e.g. /var/lib/motioneye/unknown_persons"></td>
-                            <td><span class="help-mark" title="The directory where images of unknown persons will be saved. Leave blank to use the Root Directory.">?</span></td>
+                            <td><span class="help-mark" title="{{ _("The directory where images of unknown persons will be saved. Leave blank to use the Root Directory.") }}">?</span></td>
                         </tr>
                         <tr class="settings-item" strip="true" depends="animalDetection">
                             <td class="settings-item-label"><span class="settings-item-label">Animals Path</span></td>
                             <td class="settings-item-value"><input type="text" class="styled storage camera-config" id="animalPathEntry" placeholder="e.g. /var/lib/motioneye/animals"></td>
-                            <td><span class="help-mark" title="The directory where images of animals will be saved. Leave blank to use the Root Directory.">?</span></td>
+                            <td><span class="help-mark" title="{{ _("The directory where images of animals will be saved. Leave blank to use the Root Directory.") }}">?</span></td>
                         </tr>
                         <tr class="settings-item" depends="storageDevice=network-share">
                             <td class="settings-item-label"><span class="settings-item-label"></span></td>
@@ -1057,12 +1057,12 @@
                         <tr class="settings-item">
                             <td class="settings-item-label"><span class="settings-item-label">Enable Person Detection</span></td>
                             <td class="settings-item-value"><input type="checkbox" class="styled motion-detection camera-config" id="personDetectionSwitch"></td>
-                            <td><span class="help-mark" title="Enable this to detect persons in the captured images. This enables facial recognition and the person-specific folder sorting.">?</span></td>
+                            <td><span class="help-mark" title="{{ _("Enable this to detect persons in the captured images. This enables facial recognition and the person-specific folder sorting.") }}">?</span></td>
                         </tr>
                         <tr class="settings-item">
                             <td class="settings-item-label"><span class="settings-item-label">Enable Animal Detection</span></td>
                             <td class="settings-item-value"><input type="checkbox" class="styled motion-detection camera-config" id="animalDetectionSwitch"></td>
-                            <td><span class="help-mark" title="Enable this to detect animals in the captured images.">?</span></td>
+                            <td><span class="help-mark" title="{{ _("Enable this to detect animals in the captured images.") }}">?</span></td>
                         </tr>
                         {% for config in camera_sections.get('motion-detection', {}).get('configs', []) %}
                             {{config_item(config)}}
@@ -1166,7 +1166,7 @@
                         <tr class="settings-item" depends="motionDetectionEnabled animalDetection">
                             <td class="settings-item-label"><span class="settings-item-label">Notify on Animal Detection</span></td>
                             <td class="settings-item-value"><input type="checkbox" class="styled notifications camera-config" id="notifyOnAnimalDetectionSwitch"></td>
-                            <td><span class="help-mark" title="Enable this to send a notification when an animal is detected (uses the same email/Telegram settings).">?</span></td>
+                            <td><span class="help-mark" title="{{ _("Enable this to send a notification when an animal is detected (uses the same email/Telegram settings).") }}">?</span></td>
                         </tr>
                         <tr class="settings-item" depends="motionDetectionEnabled">
                             <td colspan="100"><div class="settings-item-separator"></div></td>
@@ -1219,12 +1219,12 @@
                         <tr class="settings-item" depends="motionDetectionEnabled">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Alvoki URL") }}</span></td>
                             <td class="settings-item-value"><input type="checkbox" class="styled notifications camera-config" id="webHookEndNotificationsEnabledSwitch"></td>
-                            <td><span class="help-mark" title="enable this if you want a URL to be requested whenever a motion event ends">?</span></td>
+                            <td><span class="help-mark" title="{{ _("enable this if you want a URL to be requested whenever a motion event ends") }}">?</span></td>
                         </tr>
                         <tr class="settings-item" required="true" depends="webHookEndNotificationsEnabled motionDetectionEnabled" strip="true">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Reteja URL") }}</span></td>
                             <td class="settings-item-value"><input type="text" class="styled notifications camera-config" id="webHookEndNotificationsUrlEntry" placeholder="e.g. http://example.com/notify/"></td>
-                            <td><span class="help-mark" title="a single URL to be requested when motion event ends; the following special tokens are accepted: %Y = year, %m = month, %d = day, %H = hour, %M = minute, %S = second, %q = frame number, %v = event number">?</span></td>
+                            <td><span class="help-mark" title="{{ _("a single URL to be requested when motion event ends; the following special tokens are accepted: %Y = year, %m = month, %d = day, %H = hour, %M = minute, %S = second, %q = frame number, %v = event number") }}">?</span></td>
                         </tr>
                         <tr class="settings-item" depends="webHookEndNotificationsEnabled motionDetectionEnabled">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Metodo HTTP") }}</span></td>
