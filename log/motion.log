@@ -11,3 +11,9 @@
 [1:ml1:Camera1] [ERR] [ENC] ffmpeg_set_codec: Could not open codec Encoder not found
 [1:ml1:Camera1] [ERR] [ENC] ffmpeg_open: Failed to allocate codec!
 [1:ml1:Camera1] [ERR] [EVT] event_ffmpeg_newfile: Error opening context for movie output.
+[1:ml1:Camera1] [ERR] [ENC] ffmpeg_set_codec: Could not open codec Encoder not found
+[1:ml1:Camera1] [ERR] [ENC] ffmpeg_open: Failed to allocate codec!
+[1:ml1:Camera1] [ERR] [EVT] event_ffmpeg_newfile: Error opening context for movie output.
+[1:ml1:Camera1] [ERR] [ENC] ffmpeg_set_codec: Could not open codec Encoder not found
+[1:ml1:Camera1] [ERR] [ENC] ffmpeg_open: Failed to allocate codec!
+[1:ml1:Camera1] [ERR] [EVT] event_ffmpeg_newfile: Error opening context for movie output.

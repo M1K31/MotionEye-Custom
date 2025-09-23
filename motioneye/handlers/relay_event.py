@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
+import os
 
 from motioneye import config, mediafiles, motionctl, tasks, uploadservices, utils
 from motioneye.handlers.base import BaseHandler
@@ -117,6 +118,45 @@ class RelayEventHandler(BaseHandler):
             face_manager = get_face_manager()
             if face_manager and face_manager.is_available():
                 logging.info("Face manager available, processing motion event...")
+                
+                # Debug logging
+                cwd = os.getcwd()
+                logging.info(f"Current working directory: {cwd}")
+                logging.info(f"Received filename: {filename}")
+                
+                # Handle relative paths - check conf/media and media directories
+                actual_file = None
+                if not os.path.isabs(filename):
+                    possible_paths = [
+                        os.path.join(cwd, 'conf', filename),  # Files are in conf/media
+                        os.path.join(cwd, filename),  # Also try direct path
+                        os.path.join(cwd, filename.lstrip('/')),
+                        filename
+                    ]
+                    
+                    # Wait up to 3 seconds for file to appear
+                    import time
+                    for attempt in range(6):
+                        for path in possible_paths:
+                            if os.path.exists(path):
+                                actual_file = path
+                                logging.info(f"Found image file at: {actual_file} (attempt {attempt + 1})")
+                                break
+                        
+                        if actual_file:
+                            break
+                        
+                        if attempt < 5:
+                            time.sleep(0.5)
+                            logging.info(f"File not found yet, waiting... (attempt {attempt + 1})")
+                    
+                    if actual_file:
+                        filename = actual_file
+                    else:
+                        logging.error(f"Could not find image file after waiting. CWD: {cwd}, Original: {filename}")
+                        logging.error(f"Final check - tried paths: {possible_paths}")
+                        return
+                
                 # Process face recognition
                 faces = face_manager.process_motion_event(camera_id, filename)
                 
