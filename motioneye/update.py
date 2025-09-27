@@ -35,9 +35,12 @@ def get_os_version():
 
 def _get_os_version_lsb_release():
     try:
-        output = utils.call_subprocess('lsb_release -sri', shell=True)
-        lines = output.strip().split()
-        name, version = lines
+        dist_id = utils.call_subprocess(['lsb_release', '-s', '-i'])
+        release = utils.call_subprocess(['lsb_release', '-s', '-r'])
+
+        name = dist_id.strip()
+        version = release.strip()
+
         if version.lower() == 'rolling':
             version = ''
 
@@ -49,9 +52,10 @@ def _get_os_version_lsb_release():
 
 def _get_os_version_uname():
     try:
-        output = utils.call_subprocess('uname -rs', shell=True)
-        lines = output.strip().split()
-        name, version = lines
+        output = utils.call_subprocess(['uname', '-rs'])
+        parts = output.strip().split(None, 1)
+        name = parts[0]
+        version = parts[1] if len(parts) > 1 else ''
 
         return name, version
 

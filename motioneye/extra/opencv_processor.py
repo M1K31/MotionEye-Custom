@@ -296,6 +296,7 @@ def draw_annotations(image_path, subjects):
 
 import argparse
 import subprocess
+import shlex
 
 def trigger_notifications(camera_id, conf_path):
     """Reads the camera config and triggers the notification commands."""
@@ -329,7 +330,8 @@ def trigger_notifications(camera_id, conf_path):
                 # We need to replace motion conversion specifiers like %t
                 # For animal notifications, we don't have a motion event id, so we can use a placeholder.
                 cmd_to_run = cmd.replace('%t', '0')
-                subprocess.run(cmd_to_run, shell=True, check=True)
+                cmd_parts = shlex.split(cmd_to_run)
+                subprocess.run(cmd_parts, shell=False, check=True)
             except Exception as e:
                 print(f"ERROR: Failed to run notification command '{cmd}': {e}", file=sys.stderr)
 

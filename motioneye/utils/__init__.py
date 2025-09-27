@@ -638,6 +638,38 @@ def parse_editable_mask_file(
     return mask_lines
 
 
+import subprocess
+import logging
+
+def execute_secure_command(command_parts, timeout=30):
+    """Execute commands securely without shell injection risks"""
+    if not isinstance(command_parts, list):
+        raise TypeError("Command must be provided as a list of arguments")
+
+    # Block dangerous shell characters in all components
+    dangerous_patterns = [';', '&', '|', '$', '`', '$(', '&&', '||']
+    for part in command_parts:
+        if any(pattern in str(part) for pattern in dangerous_patterns):
+            raise ValueError(f"Potentially malicious command component detected: {part}")
+
+    try:
+        result = subprocess.run(
+            command_parts,
+            shell=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False
+        )
+        return result
+    except subprocess.TimeoutExpired:
+        logging.error(f"Command timeout: {' '.join(command_parts)}")
+        raise
+    except Exception as e:
+        logging.error(f"Command execution failed: {e}")
+        raise
+
+
 def call_subprocess(
     args,
     stdin=None,
