@@ -1,5 +1,7 @@
 # Copyright (c) 2025 Mikel Smart
 # This file is part of motionEye.
+# SPDX-License-Identifier: MIT  # Replace with the project's license identifier
+# See LICENSE at the repository root for full license text.
 
 import json
 import hmac
