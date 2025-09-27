@@ -248,7 +248,7 @@ def find_ffmpeg() -> tuple:
 
     # codecs
     try:
-        output = utils.call_subprocess(binary + ' -codecs -hide_banner', shell=True)
+        output = utils.call_subprocess([binary, '-codecs', '-hide_banner'])
 
     except subprocess.CalledProcessError as e:
         logging.error(f'ffmpeg: could not list supported codecs: {e}')
@@ -748,31 +748,67 @@ def make_timelapse_movie(camera_config, framerate, interval, group):
 
     def make_movie(pictures):
         global _timelapse_process
+        import threading
 
-        # don't specify file format with -f, let ffmpeg work it out from the extension
-        cmd = 'rm -f %(tmp_filename)s;'
-        cmd += (
-            'cat %(jpegs)s | ffmpeg -framerate %(framerate)s -f image2pipe -vcodec mjpeg -i - -vcodec %(codec)s '
-            '-format %(format)s -b:v %(bitrate)s -qscale:v 0.1 %(tmp_filename)s'
-        )
+        # Cleanly remove the temporary file if it exists
+        try:
+            if os.path.exists(tmp_filename):
+                os.remove(tmp_filename)
+        except OSError as e:
+            logging.error(f"Error removing old temp file {tmp_filename}: {e}")
+            if _timelapse_process:
+                _timelapse_process.progress = -1
+            return
 
         bitrate = 9999999
 
-        cmd = cmd % {
-            'tmp_filename': tmp_filename,
-            'jpegs': ' '.join(('"' + p['path'] + '"') for p in pictures),
-            'framerate': framerate,
-            'codec': codec,
-            'format': fmt,
-            'bitrate': bitrate,
-        }
+        # Securely build the ffmpeg command
+        cmd_args = [
+            'ffmpeg',
+            '-framerate', str(framerate),
+            '-f', 'image2pipe',
+            '-vcodec', 'mjpeg',
+            '-i', '-',  # Read from stdin
+            '-vcodec', codec,
+            '-f', fmt,
+            '-b:v', str(bitrate),
+            '-qscale:v', '0.1',
+            tmp_filename
+        ]
 
-        logging.debug(f'executing "{cmd}"')
+        logging.debug(f'executing "{" ".join(cmd_args)}"')
 
         _timelapse_process = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True
+            cmd_args,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT
         )
         _timelapse_process.progress = 0.01  # 1%
+
+        # This function runs in a separate thread to feed images to ffmpeg
+        def stream_jpegs_to_ffmpeg(process_stdin, picture_files):
+            try:
+                for picture in picture_files:
+                    try:
+                        with open(picture['path'], 'rb') as f:
+                            process_stdin.write(f.read())
+                    except IOError as e:
+                        logging.warning(f"Could not read or write picture {picture['path']}: {e}")
+            except Exception as e:
+                # This might happen if ffmpeg closes the pipe, e.g., on error.
+                logging.warning(f"Error writing to ffmpeg stdin: {e}")
+            finally:
+                # Ensure the pipe is closed to signal EOF to ffmpeg
+                if not process_stdin.closed:
+                    process_stdin.close()
+
+        # Start the streamer thread
+        streamer_thread = threading.Thread(
+            target=stream_jpegs_to_ffmpeg,
+            args=(_timelapse_process.stdin, pictures)
+        )
+        streamer_thread.start()
 
         # make subprocess stdout pipe non-blocking
         fd = _timelapse_process.stdout.fileno()

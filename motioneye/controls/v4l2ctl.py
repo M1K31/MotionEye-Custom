@@ -79,6 +79,7 @@ def list_devices():
 
 def list_resolutions(device):
     from motioneye import motionctl
+    import shlex
 
     device = utils.make_str(device)
 
@@ -88,39 +89,44 @@ def list_resolutions(device):
     logging.debug(f'listing resolutions of device {device}...')
 
     resolutions = set()
-    output = b''
-    started = time.time()
-    cmd = f"v4l2-ctl -d {quote(device)} --list-formats-ext | grep -vi stepwise | grep -oE '[0-9]+x[0-9]+' || true"
-    logging.debug(f'running command "{cmd}"')
 
     try:
-        output = utils.call_subprocess(cmd, shell=True, stderr=utils.DEV_NULL)
-    except:
-        logging.error(f'failed to list resolutions of device "{device}"')
+        sanitized_device = shlex.quote(str(device))
+        cmd_args = ["v4l2-ctl", "-d", sanitized_device, "--list-formats-ext"]
+        result = utils.execute_secure_command(cmd_args)
+        output = result.stdout
+    except Exception as e:
+        logging.error(f'failed to list resolutions of device "{device}": {e}')
+        output = ""
 
-    output = utils.make_str(output)
-
-    for pair in output.split('\n'):
-        pair = pair.strip()
-        if not pair:
+    # Process the output to find resolutions
+    resolution_pattern = re.compile(r'([0-9]+x[0-9]+)')
+    for line in output.split('\n'):
+        if 'stepwise' in line.lower():
             continue
 
-        width, height = pair.split('x')
-        width = int(width)
-        height = int(height)
+        matches = resolution_pattern.findall(line)
+        for pair in matches:
+            pair = pair.strip()
+            if not pair:
+                continue
 
-        if (width, height) in resolutions:
-            continue  # duplicate resolution
+            width, height = pair.split('x')
+            width = int(width)
+            height = int(height)
 
-        if width < 96 or height < 96:  # some reasonable minimal values
-            continue
+            if (width, height) in resolutions:
+                continue  # duplicate resolution
 
-        if not motionctl.resolution_is_valid(width, height):
-            continue
+            if width < 96 or height < 96:  # some reasonable minimal values
+                continue
 
-        resolutions.add((width, height))
+            if not motionctl.resolution_is_valid(width, height):
+                continue
 
-        logging.debug(f'found resolution {width}x{height} for device {device}')
+            resolutions.add((width, height))
+
+            logging.debug(f'found resolution {width}x{height} for device {device}')
 
     if not resolutions:
         logging.debug(f'no resolutions found for device {device}, using common values')

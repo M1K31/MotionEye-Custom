@@ -23,11 +23,17 @@ import motioneye
 
 
 def main():
-    cmd = f"cd '{motioneye.__path__[0]}' && extra/linux_init"
-    for arg in sys.argv[1:]:
-        cmd += f" '{arg}'"
+    cwd = motioneye.__path__[0]
+    cmd = ["./extra/linux_init"] + sys.argv[1:]
 
-    subprocess.run(cmd, shell=True)
+    try:
+        subprocess.run(cmd, cwd=cwd, check=True)
+    except FileNotFoundError:
+        print(f"Error: 'extra/linux_init' not found in '{cwd}'", file=sys.stderr)
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        print(f"Error executing 'extra/linux_init': {e}", file=sys.stderr)
+        sys.exit(e.returncode)
 
 
 if __name__ == '__main__':

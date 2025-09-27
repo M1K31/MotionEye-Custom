@@ -58,10 +58,12 @@ def find_motion():
 
     # version
     try:
-        output = utils.call_subprocess(quote(binary) + ' -h || true', shell=True)
-
-    except subprocess.CalledProcessError as e:  # not found as
-        logging.error(f'motion version could not be found: {e}')
+        output = utils.call_subprocess([binary, '-h'], stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        # The command might fail on some systems, but the output could still be valid.
+        output = e.output
+    except Exception as e:
+        logging.error(f'motion version check failed: {e}')
         return None, None
 
     result = re.findall('motion Version ([^,]+)', output, re.IGNORECASE)

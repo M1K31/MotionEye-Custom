@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
+import os
 
 from motioneye import config, mediafiles, motionctl, tasks, uploadservices, utils
 from motioneye.handlers.base import BaseHandler
@@ -104,36 +105,80 @@ class RelayEventHandler(BaseHandler):
 
         self.finish_json()
 
-
     def process_face_recognition(self, camera_id, filename, camera_config):
-         """Process face recognition for motion events"""
-         if not FACE_RECOGNITION_AVAILABLE:
-            return
-    
-    try:
-        face_manager = get_face_manager()
-        if face_manager and face_manager.is_available():
-            # Process face recognition
-            faces = face_manager.process_motion_event(camera_id, filename)
-            
-            if faces:
-                recognized_names = [
-                    face['name'] for face in faces 
-                    if face['name'] != 'Unknown' and face['confidence'] >= 0.6
-                ]
-                
-                if recognized_names:
-                    logging.info(f"Camera {camera_id}: Face recognition detected - {', '.join(recognized_names)}")
-                    
-                    # You can add additional actions here:
-                    # - Send notifications
-                    # - Save to database
-                    # - Trigger webhooks
-                    # - Update face detection logs
-                    
-    except Exception as e:
-        logging.error(f"Face recognition error for camera {camera_id}: {e}")
+        """Process face recognition for motion events"""
+        logging.info(f"process_face_recognition called for camera {camera_id}, file: {filename}")
 
+        if not FACE_RECOGNITION_AVAILABLE:
+            logging.warning("Face recognition not available - skipping")
+            return
+
+        try:
+            logging.info("Getting face manager...")
+            face_manager = get_face_manager()
+            if face_manager and face_manager.is_available():
+                logging.info("Face manager available, processing motion event...")
+                
+                # Debug logging
+                cwd = os.getcwd()
+                logging.info(f"Current working directory: {cwd}")
+                logging.info(f"Received filename: {filename}")
+
+                # Handle relative paths - check conf/media and media directories
+                actual_file = None
+                if not os.path.isabs(filename):
+                    possible_paths = [
+                        os.path.join(cwd, 'conf', filename),  # Files are in conf/media
+                        os.path.join(cwd, filename),  # Also try direct path
+                        os.path.join(cwd, filename.lstrip('/')),
+                        filename
+                    ]
+                    
+                    # Wait up to 3 seconds for file to appear
+                    import time
+                    for attempt in range(6):
+                        for path in possible_paths:
+                            if os.path.exists(path):
+                                actual_file = path
+                                logging.info(f"Found image file at: {actual_file} (attempt {attempt + 1})")
+                                break
+
+                        if actual_file:
+                            break
+
+                        if attempt < 5:
+                            time.sleep(0.5)
+                            logging.info(f"File not found yet, waiting... (attempt {attempt + 1})")
+                    
+                    if actual_file:
+                        filename = actual_file
+                    else:
+                        logging.error(f"Could not find image file after waiting. CWD: {cwd}, Original: {filename}")
+                        logging.error(f"Final check - tried paths: {possible_paths}")
+                        return
+
+                # Process face recognition
+                faces = face_manager.process_motion_event(camera_id, filename)
+
+                if faces:
+                    recognized_names = [
+                        face['name'] for face in faces
+                        if face['name'] != 'Unknown' and face['confidence'] >= 0.6
+                    ]
+
+                    if recognized_names:
+                        logging.info(f"Camera {camera_id}: Face recognition detected - {', '.join(recognized_names)}")
+                    else:
+                        logging.info(f"Camera {camera_id}: Faces detected but none recognized")
+                else:
+                    logging.info(f"Camera {camera_id}: No faces detected")
+            else:
+                logging.warning("Face manager not available or disabled")
+
+        except Exception as e:
+            logging.error(f"Face recognition error for camera {camera_id}: {e}")
+            import traceback
+            logging.error(traceback.format_exc())
 
     def upload_media_file(self, filename, camera_id, camera_config):
         service_name = camera_config['@upload_service']
