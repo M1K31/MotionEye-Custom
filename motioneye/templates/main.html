@@ -122,6 +122,7 @@
         <div class="settings closed">
             <div class="settings-container">
                 <form autocomplete="new-password">
+                    {% module xsrf_form_html() %}
                     <!-- Preferences -->
                     <div class="settings-section-title" id="preferencesDiv">
                         <span class="help-mark" title="{{ _("preferoj de uzanto") }}">?</span>
