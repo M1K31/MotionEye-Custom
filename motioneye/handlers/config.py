@@ -54,6 +54,7 @@ __all__ = ('ConfigHandler',)
 
 
 class ConfigHandler(BaseHandler):
+    @BaseHandler.auth(admin=True)
     async def get(self, camera_id=None, op=None):
         config.invalidate_monitor_commands()
 
@@ -77,6 +78,7 @@ class ConfigHandler(BaseHandler):
         else:
             raise HTTPError(400, 'unknown operation')
 
+    @BaseHandler.auth(admin=True)
     async def post(self, camera_id=None, op=None):
         if camera_id is not None:
             camera_id = int(camera_id)
@@ -101,7 +103,6 @@ class ConfigHandler(BaseHandler):
         else:
             raise HTTPError(400, 'unknown operation')
 
-    @BaseHandler.auth(admin=True)
     async def get_config(self, camera_id):
         if camera_id:
             logging.debug(f'getting config for camera {camera_id}')
@@ -143,7 +144,6 @@ class ConfigHandler(BaseHandler):
             ui_config = config.main_dict_to_ui(config.get_main())
             return self.finish_json(ui_config)
 
-    @BaseHandler.auth(admin=True)
     async def set_config(self, camera_id):
         try:
             ui_config = json.loads(self.request.body)
@@ -418,7 +418,6 @@ class ConfigHandler(BaseHandler):
 
         return self.check_finished(cameras, length)
 
-    @BaseHandler.auth()
     async def list(self):
         logging.debug('listing cameras')
 
@@ -534,7 +533,6 @@ class ConfigHandler(BaseHandler):
 
             return self.finish_json({'cameras': cameras})
 
-    @BaseHandler.auth(admin=True)
     async def add_camera(self):
         logging.debug('adding new camera')
 
@@ -579,7 +577,6 @@ class ConfigHandler(BaseHandler):
 
             return self.finish_json(ui_config)
 
-    @BaseHandler.auth(admin=True)
     def rem_camera(self, camera_id):
         logging.debug(f'removing camera {camera_id}')
 
@@ -592,7 +589,6 @@ class ConfigHandler(BaseHandler):
 
         return self.finish_json()
 
-    @BaseHandler.auth(admin=True)
     def backup(self):
         logging.debug('creating secure configuration backup')
         all_configs = {'main': config.get_main()}
@@ -612,7 +608,6 @@ class ConfigHandler(BaseHandler):
 
         return self.finish(content)
 
-    @BaseHandler.auth(admin=True)
     def restore(self):
         logging.debug('restoring secure configuration backup')
         try:
@@ -678,7 +673,6 @@ class ConfigHandler(BaseHandler):
             logging.warning(f'accessing {service_name} failed: {result}')
             return request_handler.finish_json({'error': result})
 
-    @BaseHandler.auth(admin=True)
     async def test(self, camera_id):
         what = self.get_argument('what')
         data = self.get_all_arguments()
@@ -838,7 +832,6 @@ class ConfigHandler(BaseHandler):
         else:
             raise HTTPError(400, 'cannot test features on this type of camera')
 
-    @BaseHandler.auth(admin=True)
     def authorize(self, camera_id):
         service_name = self.get_argument('service')
         if not service_name:

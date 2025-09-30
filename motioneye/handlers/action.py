@@ -77,8 +77,16 @@ class ActionHandler(BaseHandler):
         self.run_command_bg(command)
 
     def run_command_bg(self, command):
+        # Validate command is from a trusted source (must be an executable file)
+        if not os.path.isfile(command) or not os.access(command, os.X_OK):
+            raise HTTPError(400, 'Invalid command: not an executable file')
+
+        # Execute with an explicit argument list and never with shell=True
         self.p = subprocess.Popen(
-            command, stderr=subprocess.STDOUT, stdout=subprocess.PIPE
+            [command],  # Command and arguments as a list
+            shell=False,  # Explicitly disable the shell
+            stderr=subprocess.STDOUT,
+            stdout=subprocess.PIPE
         )
         self.command = command
 

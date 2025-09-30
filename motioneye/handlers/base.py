@@ -18,6 +18,7 @@
 import hashlib
 import json
 import logging
+import secrets
 
 from tornado.web import HTTPError, RequestHandler
 
@@ -27,6 +28,49 @@ __all__ = ('BaseHandler', 'NotFoundHandler', 'ManifestHandler')
 
 
 class BaseHandler(RequestHandler):
+    def prepare(self):
+        if self._finished:
+            return
+
+        user = self.current_user
+        if user != 'admin':
+            return
+
+        main_config = config.get_main()
+        if main_config.get('@force_password_change'):
+            # Allow access to essential URLs for password change.
+            # This is to avoid redirect loops while allowing the user
+            # to access the necessary pages to change the password.
+            allowed_paths = [
+                '/',
+                '/login',
+                '/config/list',
+                '/config/main/get',
+                '/config/main/set',
+                '/version',
+                '/prefs/set',
+                '/prefs/get',
+            ]
+
+            # Also allow access to static files, logs, etc.
+            if (self.request.path not in allowed_paths and
+                    not self.request.path.startswith('/static/') and
+                    not self.request.path.startswith('/log/')):
+                logging.info(
+                    'Admin user has a temporary password. '
+                    f'Redirecting from "{self.request.path}" to settings page to force change.'
+                )
+                self.redirect('/')
+
+    def check_xsrf_cookie(self):
+        """Override Tornado's XSRF check for custom implementation."""
+        if self.request.method in ['POST', 'DELETE', 'PUT']:
+            token = self.get_argument('_xsrf', None)
+            cookie_token = self.get_secure_cookie('_xsrf')
+
+            if not token or not cookie_token or token != cookie_token.decode():
+                raise HTTPError(403, 'CSRF token missing or invalid')
+
     def get_all_arguments(self) -> dict:
         keys = list(self.request.arguments.keys())
         arguments = {key: self.get_argument(key) for key in keys}

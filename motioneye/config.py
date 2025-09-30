@@ -23,6 +23,7 @@ import os.path
 import subprocess
 import tarfile
 import io
+import secrets
 from errno import EEXIST, ENOENT
 from re import match, sub
 from shlex import split, quote
@@ -1231,7 +1232,10 @@ def motion_camera_ui_to_dict(ui, prev_config=None):
         )
 
     if ui['command_notifications_enabled']:
-        on_event_start += utils.split_semicolon(ui['command_notifications_exec'])
+        commands = utils.split_semicolon(ui['command_notifications_exec'])
+        for command in commands:
+            parts = split(command)
+            on_event_start.append(' '.join([quote(p) for p in parts]))
 
     data['on_event_start'] = '; '.join(on_event_start)
 
@@ -1251,7 +1255,10 @@ def motion_camera_ui_to_dict(ui, prev_config=None):
         )
 
     if ui['command_end_notifications_enabled']:
-        on_event_end += utils.split_semicolon(ui['command_end_notifications_exec'])
+        commands = utils.split_semicolon(ui['command_end_notifications_exec'])
+        for command in commands:
+            parts = split(command)
+            on_event_end.append(' '.join([quote(p) for p in parts]))
 
     data['on_event_end'] = '; '.join(on_event_end)
 
@@ -1269,7 +1276,10 @@ def motion_camera_ui_to_dict(ui, prev_config=None):
         )
 
     if ui['command_storage_enabled']:
-        on_movie_end += utils.split_semicolon(ui['command_storage_exec'])
+        commands = utils.split_semicolon(ui['command_storage_exec'])
+        for command in commands:
+            parts = split(command)
+            on_movie_end.append(' '.join([quote(p) for p in parts]))
 
     data['on_movie_end'] = '; '.join(on_movie_end)
 
@@ -1308,7 +1318,10 @@ def motion_camera_ui_to_dict(ui, prev_config=None):
         )
 
     if ui['command_storage_enabled']:
-        on_picture_save += utils.split_semicolon(ui['command_storage_exec'])
+        commands = utils.split_semicolon(ui['command_storage_exec'])
+        for command in commands:
+            parts = split(command)
+            on_picture_save.append(' '.join([quote(p) for p in parts]))
 
     data['on_picture_save'] = '; '.join(on_picture_save)
 
@@ -2251,7 +2264,21 @@ def _set_default_motion(data):
     data.setdefault('@enabled', True)
 
     data.setdefault('@admin_username', 'admin')
-    data.setdefault('@admin_password', '')
+
+    # Generate random password on first install if not set
+    if '@admin_password' not in data or not data['@admin_password']:
+        temp_password = secrets.token_urlsafe(16)
+        data['@admin_password'] = hashlib.sha1(temp_password.encode('utf-8')).hexdigest()
+
+        # Log the temporary password
+        logging.critical(f"**** TEMPORARY ADMIN PASSWORD: {temp_password} ****")
+        logging.critical("**** CHANGE THIS PASSWORD IMMEDIATELY ****")
+
+        # Force password change on first login
+        data['@force_password_change'] = True
+    else:
+        data.setdefault('@force_password_change', False)
+
     data.setdefault('@normal_username', 'user')
     data.setdefault('@normal_password', '')
     data.setdefault('@lang', 'en')

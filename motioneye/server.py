@@ -421,18 +421,23 @@ def make_app(debug: bool = False) -> Application:
         log_function=_log_request,
         static_path=settings.STATIC_PATH,
         static_url_prefix='/static/',
+        xsrf_cookies=True,
+        cookie_secret=settings.COOKIE_SECRET,
     )
 
 
 def run():
     import motioneye
-    from motioneye import cleanup, mjpgclient, motionctl, tasks, wsswitch
+    from motioneye import cleanup, mjpgclient, motionctl, tasks, wsswitch, database
     from motioneye.controls import smbctl
 
     configure_signals()
     logging.info(_('saluton! ĉi tio estas motionEye-servilo ') + motioneye.VERSION)
 
     test_requirements()
+
+    # Initialize the database
+    database.init_db()
 
     # Initialize Home Assistant MQTT agent
     main_config = config.get_main()
@@ -481,6 +486,8 @@ def run():
         log_function=_log_request,
         static_path=settings.STATIC_PATH,
         static_url_prefix='/static/',
+        xsrf_cookies=True,
+        cookie_secret=settings.COOKIE_SECRET,
     )
 
     application.listen(settings.PORT, settings.LISTEN)

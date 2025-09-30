@@ -1,5 +1,6 @@
 import logging
 import os.path
+import secrets
 import socket
 import sys
 
@@ -146,3 +147,7 @@ HTTP_BASIC_AUTH = False
 
 # provides the possibility to override the hostname
 SERVER_NAME = socket.gethostname()
+
+# A secret key for signing cookies.
+# This is generated automatically and should not be changed.
+COOKIE_SECRET = secrets.token_hex(32)
