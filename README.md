@@ -27,7 +27,7 @@ These instructions will install the version of motionEye from your local checkou
     *   **For Linux (Debian/Ubuntu):**
         ```sh
         sudo apt update
-        sudo apt --no-install-recommends install python3 python3-pip motion ffmpeg v4l-utils
+        sudo apt --no-install-recommends install python3 python3-pip python3-setuptools motion ffmpeg v4l-utils
         ```
     *   **For macOS:** Follow the detailed instructions in the **[macOS Installation guide](./NEW_FEATURES.md#1-macos-installation)** to build the `motion` dependency.
 
@@ -40,6 +40,7 @@ These instructions will install the version of motionEye from your local checkou
 3.  **Run post-installation setup:**
     *   **For Linux:** `sudo motioneye_init`
     *   **For macOS:** `sudo ./build/install_macos.sh`
+    > **Note:** If you get a `command not found` error when running `sudo motioneye_init`, your system's `PATH` for `sudo` may be missing the directory where `pip` installs executables. You can fix this by finding the script's location (`pip show -f motioneye | grep motioneye_init`) and running it with its full path, e.g., `sudo /home/user/.local/bin/motioneye_init`.
 
 ### Running for Development (local instance)
 
@@ -47,7 +48,12 @@ If you are a developer and you want to run motionEye without installing it as a 
 
 1.  **Install Dependencies:** Follow the dependency installation instructions in the "For Developers" section above. Make sure you have installed both the system packages (like `motion` and `ffmpeg`) and the Python packages (by running `pip install .`).
 
-2.  **Create a Local Configuration File:** You will need a configuration file to tell motionEye where to find your local directories. There is a file that matches this already provded in the project, it assumes you will use the project directory. Edit as needed.
+2.  **Create Local Directories:** The server requires several local directories to store configuration, logs, and media files. Create them in the project root:
+    ```sh
+    mkdir -p conf run log media
+    ```
+
+3.  **Create a Local Configuration File:** You will need a configuration file to tell motionEye where to find your local directories.
     *   First, get the full path to your project directory by running `pwd`.
     *   Create a new file named `conf/motioneye.conf`.
     *   Add the following content to the file, replacing `/path/to/your/project` with the actual path you got from `pwd`:

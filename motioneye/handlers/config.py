@@ -29,6 +29,7 @@ from motioneye import (
     meyectl,
     motionctl,
     remote,
+    secure_config,
     settings,
     tasks,
     template,
@@ -593,31 +594,71 @@ class ConfigHandler(BaseHandler):
 
     @BaseHandler.auth(admin=True)
     def backup(self):
-        content = config.backup()
+        logging.debug('creating secure configuration backup')
+        all_configs = {'main': config.get_main()}
+        all_configs['cameras'] = {
+            camera_id: config.get_camera(camera_id) for camera_id in config.get_camera_ids()
+        }
 
-        if not content:
-            raise Exception('failed to create backup file')
+        try:
+            content = secure_config.create_backup(all_configs)
+        except Exception as e:
+            logging.error(f'Failed to create secure backup: {e}')
+            raise HTTPError(500, 'Failed to create backup file')
 
-        filename = 'motioneye-config.tar.gz'
-        self.set_header('Content-Type', 'application/x-compressed')
-        self.set_header('Content-Disposition', 'attachment; filename=' + filename + ';')
+        filename = 'motioneye_backup.json'
+        self.set_header('Content-Type', 'application/json')
+        self.set_header('Content-Disposition', f'attachment; filename={filename}')
 
         return self.finish(content)
 
     @BaseHandler.auth(admin=True)
     def restore(self):
+        logging.debug('restoring secure configuration backup')
         try:
             content = self.request.files['files'][0]['body']
-
         except KeyError:
             raise HTTPError(400, 'file attachment required')
 
-        result = config.restore(content)
-        if result:
-            return self.finish_json({'ok': True, 'reboot': result['reboot']})
+        try:
+            config_data = secure_config.restore_backup(content)
+        except ValueError as e:
+            logging.error(f"Failed to restore backup: {e}")
+            raise HTTPError(400, str(e))
 
-        else:
-            return self.finish_json({'ok': False})
+        try:
+            # Restore main config first
+            if 'main' in config_data:
+                main_conf = config.get_main()
+                main_conf.update(config_data['main'])
+                config.set_main(main_conf)
+
+            # Restore camera configs
+            if 'cameras' in config_data:
+                existing_ids = set(config.get_camera_ids())
+                restored_ids = set(int(k) for k in config_data['cameras'].keys())
+
+                # Add/update cameras from backup
+                for camera_id, camera_config in config_data['cameras'].items():
+                    cam_id = int(camera_id)
+                    existing_cam_conf = config.get_camera(cam_id) if cam_id in existing_ids else {}
+                    existing_cam_conf.update(camera_config)
+                    config.set_camera(cam_id, existing_cam_conf)
+
+                # Remove cameras that were not in the backup
+                for camera_id in existing_ids - restored_ids:
+                    config.rem_camera(camera_id)
+
+            config.invalidate()
+
+            # Restart motion to apply all changes
+            motionctl.stop()
+            motionctl.start()
+
+            return self.finish_json({'ok': True, 'reboot': False})
+        except Exception as e:
+            logging.error(f"Error applying restored configuration: {e}")
+            raise HTTPError(500, 'Error applying restored configuration')
 
     @classmethod
     def _on_test_result(cls, result):
