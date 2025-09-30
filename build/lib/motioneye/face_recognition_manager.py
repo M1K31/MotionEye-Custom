@@ -1,16 +1,18 @@
-#!/usr/bin/env python3
 """
 Face Recognition Manager for MotionEye-Custom
 Integrates face recognition with motion detection events
+
+# Copyright (c) 2025 Mikel Smart
+# This file is part of motionEye.
 """
 
 import os
 import cv2
-import pickle
 import numpy as np
 import logging
 from typing import Dict, List, Optional
 import json
+import base64
 from pathlib import Path
 
 # Try to import face_recognition, handle gracefully if not available
@@ -33,7 +35,8 @@ class FaceRecognitionManager:
         self.known_face_names = []
         self.config = self.load_config()
         self.faces_folder = self.config.get('faces_folder', '/var/lib/motioneye/faces')
-        self.encodings_file = os.path.join(self.faces_folder, 'face_encodings.pkl')
+        # SECURITY FIX: Changed from .pkl to .json
+        self.encodings_file = os.path.join(self.faces_folder, 'face_encodings.json')
         
         # Setup logging
         self.logger = logging.getLogger(__name__)
@@ -177,42 +180,118 @@ class FaceRecognitionManager:
             return False
     
     def save_face_encodings(self):
-        """Save face encodings to pickle file"""
+        """Save face encodings to JSON file (SECURE - no pickle)"""
         try:
+            # Convert numpy arrays to base64 strings for JSON serialization
+            serializable_encodings = []
+            for encoding in self.known_face_encodings:
+                # Convert numpy array to base64 string
+                encoding_b64 = base64.b64encode(encoding.tobytes()).decode('utf-8')
+                serializable_encodings.append(encoding_b64)
+
             data = {
-                'encodings': self.known_face_encodings,
+                'encodings': serializable_encodings,
                 'names': self.known_face_names,
                 'config': self.config,
-                'version': '1.0'
+                'version': '2.0',
+                'format': 'secure_json',
+                'encoding_shape': encoding.shape if self.known_face_encodings else None,
+                'encoding_dtype': str(encoding.dtype) if self.known_face_encodings else None
             }
             
-            with open(self.encodings_file, 'wb') as f:
-                pickle.dump(data, f)
+            with open(self.encodings_file, 'w') as f:
+                json.dump(data, f, indent=2)
                 
-            self.logger.info(f"Face encodings saved to {self.encodings_file}")
+            self.logger.info(f"Face encodings saved securely to {self.encodings_file}")
             
         except Exception as e:
             self.logger.error(f"Error saving encodings: {e}")
     
     def load_face_encodings(self):
-        """Load face encodings from pickle file"""
+        """Load face encodings from JSON file (SECURE - no pickle)"""
         try:
             if os.path.exists(self.encodings_file):
-                with open(self.encodings_file, 'rb') as f:
-                    data = pickle.load(f)
-                    
-                self.known_face_encodings = data.get('encodings', [])
+                with open(self.encodings_file, 'r') as f:
+                    data = json.load(f)
+
+                # Validate data structure
+                if not isinstance(data, dict) or 'encodings' not in data:
+                    self.logger.warning("Invalid face encodings file format")
+                    self.known_face_encodings = []
+                    self.known_face_names = []
+                    return
+
+                # Convert base64 strings back to numpy arrays
+                self.known_face_encodings = []
+                encoding_shape = data.get('encoding_shape', (128,))  # Default shape
+                encoding_dtype = data.get('encoding_dtype', 'float64')  # Default dtype
+
+                for encoding_b64 in data['encodings']:
+                    try:
+                        # Decode base64 and convert to numpy array
+                        encoding_bytes = base64.b64decode(encoding_b64.encode('utf-8'))
+                        encoding_array = np.frombuffer(encoding_bytes, dtype=encoding_dtype)
+
+                        # Reshape if shape information is available
+                        if encoding_shape:
+                            encoding_array = encoding_array.reshape(encoding_shape)
+
+                        self.known_face_encodings.append(encoding_array)
+                    except Exception as e:
+                        self.logger.error(f"Error decoding face encoding: {e}")
+                        continue
+
                 self.known_face_names = data.get('names', [])
                 
-                self.logger.info(f"Loaded {len(self.known_face_encodings)} face encodings")
+                self.logger.info(f"Loaded {len(self.known_face_encodings)} face encodings securely")
+
             else:
-                self.logger.info("No existing face encodings found")
+                # Check for legacy pickle file and convert it
+                legacy_pickle_file = os.path.join(self.faces_folder, 'face_encodings.pkl')
+                if os.path.exists(legacy_pickle_file):
+                    self.logger.warning("Found legacy pickle file - converting to secure format")
+                    self._convert_legacy_pickle_file(legacy_pickle_file)
+                else:
+                    self.logger.info("No existing face encodings found")
                 
+        except json.JSONDecodeError as e:
+            self.logger.error(f"Error parsing face encodings file: {e}")
+            self.known_face_encodings = []
+            self.known_face_names = []
         except Exception as e:
             self.logger.error(f"Error loading encodings: {e}")
             self.known_face_encodings = []
             self.known_face_names = []
     
+    def _convert_legacy_pickle_file(self, pickle_file: str):
+        """Convert legacy pickle file to secure JSON format"""
+        try:
+            import pickle
+
+            # Backup the pickle file first
+            backup_file = f"{pickle_file}.backup"
+            os.rename(pickle_file, backup_file)
+
+            # Load from backup
+            with open(backup_file, 'rb') as f:
+                data = pickle.load(f)
+
+            # Extract data
+            self.known_face_encodings = data.get('encodings', [])
+            self.known_face_names = data.get('names', [])
+
+            # Save in secure format
+            self.save_face_encodings()
+
+            self.logger.info(f"Successfully converted legacy pickle file to secure format")
+            self.logger.info(f"Legacy file backed up as: {backup_file}")
+
+        except Exception as e:
+            self.logger.error(f"Error converting legacy pickle file: {e}")
+            # Restore original file if conversion failed
+            if os.path.exists(backup_file):
+                os.rename(backup_file, pickle_file)
+
     def recognize_faces_in_image(self, image_path: str) -> List[Dict]:
         """
         Recognize faces in an image file
@@ -407,7 +486,8 @@ class FaceRecognitionManager:
             'detection_method': self.config.get('detection_method', 'hog'),
             'recognition_threshold': self.config.get('max_face_distance', 0.6),
             'min_confidence': self.config.get('min_confidence', 0.6),
-            'config_path': self.config_path
+            'config_path': self.config_path,
+            'secure_format': True  # Indicates this uses secure JSON format
         }
     
     def is_available(self) -> bool:
