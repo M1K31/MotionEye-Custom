@@ -19,6 +19,8 @@ import hashlib
 import json
 import logging
 import secrets
+import weakref
+import gc
 
 from tornado.web import HTTPError, RequestHandler
 
@@ -28,9 +30,45 @@ __all__ = ('BaseHandler', 'NotFoundHandler', 'ManifestHandler')
 
 
 class BaseHandler(RequestHandler):
+    _active_handlers = weakref.WeakSet()
+
+    def on_finish(self):
+        """Cleanup after request completes."""
+        super().on_finish()
+        self._cleanup()
+
+    def on_connection_close(self):
+        """Cleanup when connection closes."""
+        super().on_connection_close()
+        self._cleanup()
+
+    def _cleanup(self):
+        """
+        Perform cleanup operations to prevent memory leaks.
+        This is called when the request is finished or the connection is closed.
+        """
+        if getattr(self, '_cleanup_registered', True):
+            return
+
+        self._cleanup_registered = True
+
+        if hasattr(self, '_image_data'):
+            self._image_data = None
+
+        if len(BaseHandler._active_handlers) > 50:
+            gc.collect()
+
+    @classmethod
+    def get_active_count(cls):
+        """Get number of active handlers."""
+        return len(cls._active_handlers)
+
     def prepare(self):
         if self._finished:
             return
+
+        BaseHandler._active_handlers.add(self)
+        self._cleanup_registered = False
 
         user = self.current_user
         if user != 'admin':
@@ -138,6 +176,8 @@ class BaseHandler(RequestHandler):
         self.set_header('Content-Type', content_type)
 
         context.setdefault('version', motioneye.VERSION)
+        if self.xsrf_token:
+            context['xsrf_token'] = self.xsrf_token.decode('utf-8')
 
         content = template.render(template_name, **context)
         self.finish(content)

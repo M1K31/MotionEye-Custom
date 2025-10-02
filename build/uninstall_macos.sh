@@ -22,7 +22,7 @@ if python3 -m pip show motioneye &> /dev/null; then
 fi
 
 echo "--- Uninstalling Python dependencies ---"
-python3 -m pip uninstall -y opencv-python face_recognition paho-mqtt || true
+python3 -m pip uninstall -y opencv-python face_recognition paho-mqtt psutil || true
 
 echo "--- Uninstalling Homebrew dependencies ---"
 # This will uninstall dependencies installed by the build script.

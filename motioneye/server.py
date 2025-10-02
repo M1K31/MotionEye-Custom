@@ -426,9 +426,36 @@ def make_app(debug: bool = False) -> Application:
     )
 
 
+def setup_memory_management(ioloop):
+    """Setup periodic memory management"""
+    import gc
+    from tornado.ioloop import PeriodicCallback
+    import psutil
+
+    def perform_gc():
+        """Perform garbage collection and log memory stats"""
+        collected = gc.collect()
+
+        if collected > 100:
+            logging.debug(f"Garbage collected {collected} objects")
+
+        # Log memory usage periodically
+        process = psutil.Process()
+        memory_mb = process.memory_info().rss / 1024 / 1024
+
+        if memory_mb > 500:  # Alert if using >500MB
+            logging.warning(f"High memory usage: {memory_mb:.1f}MB")
+
+    # Run every 5 minutes
+    gc_callback = PeriodicCallback(perform_gc, 300000)
+    gc_callback.start()
+
+    logging.info("Memory management enabled")
+
+
 def run():
     import motioneye
-    from motioneye import cleanup, mjpgclient, motionctl, tasks, wsswitch, database
+    from motioneye import cleanup, mjpgclient, motionctl, tasks, wsswitch, database, monitor
     from motioneye.controls import smbctl
 
     configure_signals()
@@ -453,6 +480,10 @@ def run():
     else:
         start_motion()
 
+    # Start the motion daemon monitor
+    daemon_monitor = monitor.MotionDaemonMonitor()
+    daemon_monitor.start_monitoring()
+
     # Publish Home Assistant discovery messages for all cameras
     if ha_agent:
         for camera_id in config.get_camera_ids():
@@ -476,6 +507,8 @@ def run():
     if settings.SMB_SHARES:
         smbctl.start()
         logging.info('smb mounts started')
+
+    setup_memory_management(IOLoop.current())
 
     template.add_context('static_path', 'static/')
     template.add_context('lingvo', settings.lingvo)
