@@ -36,6 +36,36 @@ def get_db_connection():
             raise
     return _DB_CONN
 
+def optimize_database():
+    """Add indexes to improve query performance"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Add indexes for common queries
+        indexes = [
+            'CREATE INDEX IF NOT EXISTS idx_events_camera_id ON events(camera_id)',
+            'CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp)',
+            'CREATE INDEX IF NOT EXISTS idx_events_camera_timestamp ON events(camera_id, timestamp)',
+            'CREATE INDEX IF NOT EXISTS idx_media_camera_id ON media_files(camera_id)',
+            'CREATE INDEX IF NOT EXISTS idx_media_timestamp ON media_files(timestamp)',
+        ]
+
+        for index_sql in indexes:
+            try:
+                cursor.execute(index_sql)
+            except sqlite3.OperationalError as e:
+                # This can happen if the tables (events, media_files) don't exist yet, which is fine.
+                logging.warning(f"Could not create index, this may be normal on first run: {e}")
+
+
+        conn.commit()
+        logging.info("Database indexes created successfully")
+
+    except Exception as e:
+        logging.error(f"Failed to optimize database: {e}")
+
+
 def init_db():
     """Initializes the database and creates tables if they don't exist."""
     try:
@@ -55,6 +85,9 @@ def init_db():
     except sqlite3.Error as e:
         logging.error(f"Database initialization failed: {e}")
         raise
+
+    # Apply database optimizations
+    optimize_database()
 
 # --- Rate Limiting ---
 _RATE_LIMIT_WINDOW = 300  # 5 minutes
