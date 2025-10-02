@@ -46,8 +46,8 @@ else:
     from motioneye.controls import macoscamctl as camctl
 from motioneye.controls.powerctl import PowerControl
 from motioneye.handlers.base import BaseHandler
-from motioneye.utils.mjpeg import test_mjpeg_url
-from motioneye.utils.rtmp import test_rtmp_url
+from motioneye.utils.mjpeg import check_mjpeg_url
+from motioneye.utils.rtmp import check_rtmp_url
 from motioneye.utils.rtsp import test_rtsp_url
 
 __all__ = ('ConfigHandler',)
@@ -431,7 +431,7 @@ class ConfigHandler(BaseHandler):
             scheme = self.get_argument('scheme', 'http')
 
             if scheme in ['http', 'https', 'mjpeg']:
-                resp = await test_mjpeg_url(
+                resp = await check_mjpeg_url(
                     self.get_all_arguments(), auth_modes=['basic'], allow_jpeg=True
                 )
                 return self._handle_list_cameras_response(resp)
@@ -441,14 +441,14 @@ class ConfigHandler(BaseHandler):
                 return self._handle_list_cameras_response(resp)
 
             elif scheme == 'rtmp':
-                resp = test_rtmp_url(self.get_all_arguments())
+                resp = check_rtmp_url(self.get_all_arguments())
                 return self._handle_list_cameras_response(resp)
 
             else:
                 return self.finish_json_with_error(f'protocol {scheme} not supported')
 
         elif proto == 'mjpeg':
-            resp = await test_mjpeg_url(
+            resp = await check_mjpeg_url(
                 self.get_all_arguments(),
                 auth_modes=['basic', 'digest'],
                 allow_jpeg=False,

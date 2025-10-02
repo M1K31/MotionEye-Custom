@@ -115,3 +115,29 @@ action:
       message: Motion detected at the front door!
 mode: single
 ```
+
+## 4. System Stability and Performance Enhancements
+
+Several new features have been added under the hood to improve the long-term stability and performance of your motionEye server. These features are enabled by default and do not require any configuration.
+
+### Automatic Motion Daemon Recovery
+
+motionEye now actively monitors the core `motion` daemon. If the daemon crashes or becomes unresponsive for any reason, the system will automatically attempt to restart it.
+- This feature works on both Linux (using `systemctl`) and macOS (using `launchd`).
+- The system will attempt to restart the service up to 5 times in quick succession. If it continues to fail, it will stop trying, and manual intervention will be required. This prevents a continuous loop of failed restarts.
+
+### Robust MJPEG Stream Handling
+
+The client responsible for reading video streams from your cameras has been made more resilient.
+- Previously, a temporary network glitch or a camera stream interruption could cause the connection to fail permanently until the service was restarted.
+- Now, if a connection is lost, the client will attempt to reconnect automatically using an exponential backoff strategy. This means it will wait a few seconds before the first retry, then longer for the next, and so on. This greatly improves the reliability of cameras on less stable network connections (e.g., Wi-Fi).
+
+### Memory Leak Prevention
+
+The web interface handlers have been optimized to ensure that memory is properly released after each request is handled. This prevents small memory leaks that could, over a long period, cause the server to become slow or unresponsive, requiring a restart.
+
+### Periodic Memory Management
+
+A new background task runs every five minutes to perform two key functions:
+1.  **Garbage Collection:** It explicitly runs Python's garbage collector to free up any memory that is no longer in use.
+2.  **Memory Monitoring:** It checks the total memory (RAM) being used by the motionEye process. If the usage exceeds 500MB, it will log a warning message. This helps in diagnosing potential issues before they become critical.

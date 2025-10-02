@@ -18,10 +18,10 @@
 from motioneye.utils import GetCamerasResponse
 from motioneye.utils.http import RtmpUrl
 
-__all__ = ('test_rtmp_url',)
+__all__ = ('check_rtmp_url',)
 
 
-def test_rtmp_url(data: dict) -> GetCamerasResponse:
+def check_rtmp_url(data: dict) -> GetCamerasResponse:
     url_obj = RtmpUrl.from_dict(data)
 
     # Since RTMP is a binary TCP stream its a little more work to do a proper test

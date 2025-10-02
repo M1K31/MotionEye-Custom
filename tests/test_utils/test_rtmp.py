@@ -1,11 +1,11 @@
 import tornado.testing
 
-from motioneye.utils.rtmp import test_rtmp_url
+from motioneye.utils.rtmp import check_rtmp_url
 
 
 class UtilsRtmpTest(tornado.testing.AsyncTestCase):
-    def test_test_rtmp_url(self):
-        result = test_rtmp_url({})
+    def test_check_rtmp_url(self):
+        result = check_rtmp_url({})
         self.assertEqual([{'id': 'tcp', 'name': 'RTMP/TCP Camera'}], result.cameras)
         self.assertIsNone(result.error)
 

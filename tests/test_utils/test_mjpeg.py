@@ -2,7 +2,7 @@ import tornado.testing
 from tornado.concurrent import Future
 from tornado.web import RequestHandler
 
-from motioneye.utils.mjpeg import test_mjpeg_url
+from motioneye.utils.mjpeg import check_mjpeg_url
 from tests import WebTestCase
 
 
@@ -26,7 +26,7 @@ class UtilsMjpegTest(WebTestCase):
 
         return [('/', MjpegHandler)]
 
-    def test_test_mjpeg_url_invalid_data(self):
+    def test_check_mjpeg_url_invalid_data(self):
         self.data = 'Some random string'
 
         callback_result = []
@@ -36,7 +36,7 @@ class UtilsMjpegTest(WebTestCase):
             self.stop()
             callback_result.append((resp.cameras, resp.error))
 
-        future = test_mjpeg_url(
+        future = check_mjpeg_url(
             {'port': self.get_http_port()}, auth_modes=['basic'], allow_jpeg=True
         )
         future.add_done_callback(mock_on_response)
@@ -46,7 +46,7 @@ class UtilsMjpegTest(WebTestCase):
         self.assertIsNone(callback_result[0][0])
         self.assertEqual('not a supported network camera', callback_result[0][1])
 
-    def test_test_mjpeg_url_jpeg_cam(self):
+    def test_check_mjpeg_url_jpeg_cam(self):
         self.data = 'image/jpeg camera'
         callback_result = []
 
@@ -55,7 +55,7 @@ class UtilsMjpegTest(WebTestCase):
             self.stop()
             callback_result.append((resp.cameras, resp.error))
 
-        future = test_mjpeg_url(
+        future = check_mjpeg_url(
             {'port': self.get_http_port()}, auth_modes=['basic'], allow_jpeg=True
         )
         future.add_done_callback(mock_on_response)
@@ -72,7 +72,7 @@ class UtilsMjpegTest(WebTestCase):
             {'id': 1, 'name': 'JPEG Network Camera', 'keep_alive': True}, cam
         )
 
-    def test_test_mjpeg_url_mjpeg_cam(self):
+    def test_check_mjpeg_url_mjpeg_cam(self):
         self.data = 'mjpeg camera'
         callback_result = []
 
@@ -81,7 +81,7 @@ class UtilsMjpegTest(WebTestCase):
             self.stop()
             callback_result.append((resp.cameras, resp.error))
 
-        future = test_mjpeg_url(
+        future = check_mjpeg_url(
             {'port': self.get_http_port()}, auth_modes=['basic'], allow_jpeg=True
         )
         future.add_done_callback(mock_on_response)

@@ -28,7 +28,7 @@ fi
 
 echo "--- Uninstalling Python dependencies ---"
 # These were installed alongside motioneye if installed from source
-python3 -m pip uninstall -y opencv-python face_recognition paho-mqtt || true
+python3 -m pip uninstall -y opencv-python face_recognition paho-mqtt psutil || true
 
 echo "--- Removing system-level dependencies ---"
 apt-get remove -y --purge motion ffmpeg v4l-utils

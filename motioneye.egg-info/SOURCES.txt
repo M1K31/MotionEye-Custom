@@ -6,6 +6,7 @@ setup.py
 motioneye/__init__.py
 motioneye/cleanup.py
 motioneye/config.py
+motioneye/database.py
 motioneye/face_recognition_manager.py
 motioneye/homeassistant.py
 motioneye/mediafiles.py
@@ -16,6 +17,7 @@ motioneye/motionctl.py
 motioneye/motioneye_init.py
 motioneye/prefs.py
 motioneye/remote.py
+motioneye/secure_config.py
 motioneye/sendmail.py
 motioneye/sendtelegram.py
 motioneye/server.py
