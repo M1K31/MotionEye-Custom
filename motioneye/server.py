@@ -453,11 +453,39 @@ def setup_memory_management(ioloop):
     logging.info("Memory management enabled")
 
 
+def configure_high_performance_ioloop():
+    """Configure Tornado for maximum performance"""
+    import tornado.platform.asyncio
+    import asyncio
+    import logging
+
+    # Use uvloop if available (3x faster than asyncio)
+    try:
+        import uvloop
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+        logging.info("Using uvloop for high-performance event loop")
+    except ImportError:
+        logging.info("uvloop not available, using default asyncio")
+
+    # Configure Tornado
+    tornado.platform.asyncio.AsyncIOMainLoop().install()
+
+    # Increase file descriptor limit
+    import resource
+    try:
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        resource.setrlimit(resource.RLIMIT_NOFILE, (min(4096, hard), hard))
+        logging.info(f"File descriptor limit increased to {min(4096, hard)}")
+    except Exception as e:
+        logging.warning(f"Could not increase file descriptor limit: {e}")
+
+
 def run():
     import motioneye
     from motioneye import cleanup, mjpgclient, motionctl, tasks, wsswitch, database, monitor
     from motioneye.controls import smbctl
 
+    configure_high_performance_ioloop()
     configure_signals()
     logging.info(_('saluton! ĉi tio estas motionEye-servilo ') + motioneye.VERSION)
 

@@ -16,12 +16,14 @@
 
 import collections
 import datetime
+import functools
 import glob
 import hashlib
 import logging
 import os.path
 import subprocess
 import tarfile
+import time
 import io
 import secrets
 from errno import EEXIST, ENOENT
@@ -142,6 +144,60 @@ _USED_MOTION_OPTIONS = {
     'webcontrol_port',
     'width',
 }
+
+
+class ConfigCache:
+    """Cache configuration with TTL"""
+
+    def __init__(self, ttl=30):
+        self.cache = {}
+        self.ttl = ttl
+
+    def get_cached_config(self, camera_id):
+        """Get cached config if still valid"""
+        if camera_id in self.cache:
+            cached_data, timestamp = self.cache[camera_id]
+            if time.time() - timestamp < self.ttl:
+                return cached_data
+        return None
+
+    def set_cached_config(self, camera_id, config):
+        """Cache configuration"""
+        self.cache[camera_id] = (config, time.time())
+
+    def invalidate(self, camera_id=None):
+        """Invalidate cache"""
+        if camera_id:
+            self.cache.pop(camera_id, None)
+        else:
+            self.cache.clear()
+
+    def set_ttl(self, ttl):
+        self.ttl = ttl
+
+
+# Global cache instance
+config_cache = ConfigCache(ttl=30)
+
+
+def cached_camera_config(func):
+    """Decorator for caching camera configuration"""
+    @functools.wraps(func)
+    def wrapper(camera_id, *args, **kwargs):
+        # Check cache first
+        cached = config_cache.get_cached_config(camera_id)
+        if cached is not None:
+            return cached
+
+        # Get fresh config
+        config = func(camera_id, *args, **kwargs)
+
+        # Cache it
+        config_cache.set_cached_config(camera_id, config)
+
+        return config
+
+    return wrapper
 
 
 def text_double(v, data):
@@ -355,6 +411,9 @@ def set_main(main_config):
         main_config.setdefault(n, v)
     _main_config_cache = main_config
 
+    if '@config_cache_ttl' in main_config:
+        config_cache.set_ttl(main_config['@config_cache_ttl'])
+
     main_config = dict(main_config)
     _set_additional_config(main_config)
 
@@ -475,6 +534,7 @@ def get_network_shares():
     return mounts
 
 
+@cached_camera_config
 def get_camera(camera_id, as_lines=False):
     if not as_lines and camera_id in _camera_config_cache:
         return _camera_config_cache[camera_id]
@@ -567,6 +627,7 @@ def get_camera(camera_id, as_lines=False):
 def set_camera(camera_id, camera_config):
     camera_config['@id'] = camera_id
     _camera_config_cache[camera_id] = camera_config
+    config_cache.invalidate(camera_id)
 
     camera_config = dict(camera_config)
 
@@ -758,6 +819,7 @@ def rem_camera(camera_id):
 
     _camera_ids_cache = None
     _camera_config_cache.clear()
+    config_cache.invalidate(camera_id)
 
     try:
         os.remove(camera_config_path)
@@ -2083,6 +2145,7 @@ def invalidate():
     _camera_config_cache = {}
     _camera_ids_cache = None
     _additional_structure_cache = {}
+    config_cache.invalidate()
 
 
 def _value_to_python(value):
@@ -2297,6 +2360,8 @@ def _set_default_motion(data):
     data.setdefault('webcontrol_localhost', settings.MOTION_CONTROL_LOCALHOST)
     # the advanced list of parameters will be available
     data.setdefault('webcontrol_parms', 2)
+    data.setdefault('@mjpeg_proxy_buffer_size', 3)
+    data.setdefault('@config_cache_ttl', 30)
 
 
 def _set_default_motion_camera(camera_id, data):

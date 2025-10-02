@@ -141,3 +141,19 @@ The web interface handlers have been optimized to ensure that memory is properly
 A new background task runs every five minutes to perform two key functions:
 1.  **Garbage Collection:** It explicitly runs Python's garbage collector to free up any memory that is no longer in use.
 2.  **Memory Monitoring:** It checks the total memory (RAM) being used by the motionEye process. If the usage exceeds 500MB, it will log a warning message. This helps in diagnosing potential issues before they become critical.
+
+## 5. Performance Tuning
+
+Several new parameters have been introduced to allow for fine-tuning the performance of motionEye. These settings should be changed with care and are intended for advanced users. They can be configured by editing the `motion.conf` file located in your configuration directory (e.g., `/etc/motioneye/motion.conf`).
+
+### MJPEG Proxy Buffer Size
+
+-   **Parameter:** `mjpeg_proxy_buffer_size`
+-   **Default:** `3`
+-   **Description:** This setting controls the number of frames to buffer in the MJPEG proxy. A larger buffer can lead to smoother video streams, especially on unstable networks, but will increase memory consumption per camera. A smaller buffer reduces memory usage but may result in choppier video if frames are not processed quickly.
+
+### Configuration Cache TTL
+
+-   **Parameter:** `config_cache_ttl`
+-   **Default:** `30` (seconds)
+-   **Description:** This setting determines how long camera configurations are cached in memory. Caching configurations significantly reduces disk I/O and improves the responsiveness of the web UI. However, if you make changes to a camera's configuration file directly (not through the UI), those changes will not be reflected until the cache expires. A lower value means changes are picked up faster, but with a slight performance cost. A higher value improves performance but increases the delay in picking up manual configuration changes.

@@ -20,6 +20,9 @@ import logging
 import re
 import socket
 import time
+import threading
+from collections import deque
+import io
 from typing import Any, Tuple
 
 from tornado.concurrent import Future
@@ -30,6 +33,45 @@ from motioneye import config, motionctl, settings, utils
 
 # Global state for managing connection retries
 _retry_state = {}
+
+
+class OptimizedMJPEGProxy:
+    """Optimized MJPEG proxy with smart buffering"""
+
+    def __init__(self, buffer_size=3):
+        self.buffer_size = buffer_size
+        self.frame_buffer = deque(maxlen=buffer_size)
+        self.buffer_lock = threading.Lock()
+
+        # Reuse BytesIO objects
+        self.bytesio_pool = deque([io.BytesIO() for _ in range(5)])
+
+    def get_buffer(self):
+        """Get BytesIO from pool or create new one"""
+        try:
+            return self.bytesio_pool.popleft()
+        except IndexError:
+            return io.BytesIO()
+
+    def return_buffer(self, buffer):
+        """Return BytesIO to pool after clearing"""
+        buffer.seek(0)
+        buffer.truncate()
+        if len(self.bytesio_pool) < 10:
+            self.bytesio_pool.append(buffer)
+
+    def add_frame(self, frame_data):
+        """Add frame to buffer efficiently"""
+        with self.buffer_lock:
+            # Only keep recent frames
+            self.frame_buffer.append(frame_data)
+
+    def get_latest_frame(self):
+        """Get most recent frame"""
+        with self.buffer_lock:
+            if self.frame_buffer:
+                return self.frame_buffer[-1]
+        return None
 
 
 class MjpgClient(IOStream):
@@ -44,7 +86,7 @@ class MjpgClient(IOStream):
     clients = {}  # dictionary of clients indexed by camera id
 
     def __init__(self, camera_id, port, username, password, auth_mode,
-                 retry_delay=2, max_retries=5):
+                 retry_delay=2, max_retries=5, proxy_buffer_size=3):
         self._camera_id = camera_id
         self._port = port
         self._username = username or ''
@@ -57,7 +99,7 @@ class MjpgClient(IOStream):
         self._max_retries = max_retries
 
         self._last_access = 0
-        self._last_jpg = None
+        self._proxy = OptimizedMJPEGProxy(buffer_size=proxy_buffer_size)
         self._last_jpg_times = []
 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
@@ -96,7 +138,7 @@ class MjpgClient(IOStream):
 
     def get_last_jpg(self):
         self._last_access = time.time()
-        return self._last_jpg
+        return self._proxy.get_latest_frame()
 
     def get_last_access(self):
         return self._last_access
@@ -256,7 +298,7 @@ class MjpgClient(IOStream):
         result, data = self._get_future_result(future)
         if not result:
             return
-        self._last_jpg = data
+        self._proxy.add_frame(data)
         self._last_jpg_times.append(time.time())
         while len(self._last_jpg_times) > self._FPS_LEN:
             self._last_jpg_times.pop(0)
@@ -322,13 +364,17 @@ def get_jpg(camera_id):
             logging.error(f'could not start mjpg client for camera id {camera_id}: not enabled or not local')
             return None
 
+        main_config = config.get_main()
+        proxy_buffer_size = main_config.get('@mjpeg_proxy_buffer_size', 3)
+
         port = camera_config['stream_port']
         username, password, auth_mode = None, None, None
         if camera_config.get('stream_auth_method') > 0:
             username, password = camera_config.get('stream_authentication', ':').split(':')
             auth_mode = 'digest' if camera_config.get('stream_auth_method') > 1 else 'basic'
 
-        client = MjpgClient(camera_id, port, username, password, auth_mode)
+        client = MjpgClient(camera_id, port, username, password, auth_mode,
+                            proxy_buffer_size=proxy_buffer_size)
         client.do_connect()
         MjpgClient.clients[camera_id] = client
 
