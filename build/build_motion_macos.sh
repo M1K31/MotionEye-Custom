@@ -9,21 +9,15 @@ set -e
 echo "--- Installing dependencies with Homebrew ---"
 brew install ffmpeg pkg-config libjpeg libmicrohttpd automake gettext
 
-# Replace lines 12-14 with:
-# Create secure temporary directory
+echo "--- Cloning motion source code ---"
+# Create a secure temporary directory for the source code
 TEMP_DIR=$(mktemp -d)
+# Ensure the temporary directory is cleaned up on script exit
 trap 'rm -rf "$TEMP_DIR"' EXIT
 
-# Clone into secure temp directory
+# Clone into the secure temp directory
 git clone https://github.com/Motion-Project/motion.git "$TEMP_DIR/motion-src"
 cd "$TEMP_DIR/motion-src"
-
-echo "--- Cloning motion source code ---"
-# Clone into a temporary directory
-# If the directory already exists, remove it first for a clean build
-rm -rf /tmp/motion-src
-git clone https://github.com/Motion-Project/motion.git /tmp/motion-src
-cd /tmp/motion-src
 
 echo "--- Running autoreconf to generate configure script ---"
 autoreconf -fiv

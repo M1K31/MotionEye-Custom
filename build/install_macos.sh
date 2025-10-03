@@ -28,11 +28,10 @@ else
     echo "--- /usr/local/etc/motioneye/motioneye.conf already exists, skipping. ---"
 fi
 
-# Replace lines 25-27 with:
-echo "--- Creating log directory [/var/log] and log file ---"
+echo "--- Creating log directory [/var/log] and setting permissions ---"
 mkdir -p /var/log
 touch /var/log/motioneye.log
-chmod 640 /var/log/motioneye.log  # Only owner and group can read
+chmod 640 /var/log/motioneye.log
 chown root:wheel /var/log/motioneye.log
 
 

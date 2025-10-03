@@ -25,9 +25,14 @@ These instructions will install the version of motionEye from your local checkou
 
 1.  **Install Dependencies:**
     *   **For Linux (Debian/Ubuntu):**
+        For a basic installation, the following packages are required:
         ```sh
         sudo apt update
         sudo apt --no-install-recommends install python3 python3-pip python3-setuptools motion ffmpeg v4l-utils
+        ```
+        To enable all features (like Facial Recognition), additional build tools are needed to compile dependencies:
+        ```sh
+        sudo apt --no-install-recommends install build-essential cmake python3-dev libopenblas-dev liblapack-dev libjpeg-dev libboost-python-dev
         ```
     *   **For macOS:** Follow the detailed instructions in the **[macOS Installation guide](./NEW_FEATURES.md#1-macos-installation)** to build the `motion` dependency.
 
@@ -46,7 +51,9 @@ These instructions will install the version of motionEye from your local checkou
 
 If you are a developer and you want to run motionEye without installing it as a system-wide service, you can run it directly from the source tree. This is useful for testing and debugging.
 
-1.  **Install Dependencies:** Follow the dependency installation instructions in the "For Developers" section above. Make sure you have installed both the system packages (like `motion` and `ffmpeg`) and the Python packages (by running `pip install .`).
+> **Note:** It is highly recommended to use a Python virtual environment (`venv`) for development to avoid conflicts with system packages.
+
+1.  **Install Dependencies:** Follow the dependency installation instructions in the "For Developers" section above. Make sure you have installed both the system packages (like `motion` and `ffmpeg`) and the Python packages (e.g., by running `pip install .` inside your virtual environment).
 
 2.  **Create Local Directories:** The server requires several local directories to store configuration, logs, and media files. Create them in the project root:
     ```sh
