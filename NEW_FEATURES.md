@@ -157,3 +157,20 @@ Several new parameters have been introduced to allow for fine-tuning the perform
 -   **Parameter:** `config_cache_ttl`
 -   **Default:** `30` (seconds)
 -   **Description:** This setting determines how long camera configurations are cached in memory. Caching configurations significantly reduces disk I/O and improves the responsiveness of the web UI. However, if you make changes to a camera's configuration file directly (not through the UI), those changes will not be reflected until the cache expires. A lower value means changes are picked up faster, but with a slight performance cost. A higher value improves performance but increases the delay in picking up manual configuration changes.
+
+## 6. Custom Storage Path
+
+motionEye now provides a more flexible way to manage where your media files (pictures and videos) are stored. In addition to pre-defined locations, you can now specify any custom directory on the local filesystem.
+
+### How to Use
+
+1.  In the motionEye web UI, open the settings panel for a camera.
+2.  Go to the **File Storage** section.
+3.  Find the **Storage Device** dropdown menu.
+4.  Select the **"Custom Path"** option from the list.
+5.  A new field, **Root Directory**, will appear. Enter the absolute path to the directory where you want to save your media files (e.g., `/mnt/my_external_drive/motion_captures`).
+6.  Apply the settings.
+
+motionEye will now save all pictures and videos for that camera to the specified directory.
+
+**Important:** Ensure that the user running motionEye has the necessary write permissions for the custom directory you specify.
