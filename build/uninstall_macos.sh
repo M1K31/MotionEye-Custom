@@ -103,6 +103,19 @@ fi
 echo "--- Removing 'motion' binary ---"
 rm -f /usr/local/bin/motion
 
+echo "--- Removing log file ---"
+rm -f /var/log/motioneye.log
+
+echo "--- Removing working directory ---"
+if [ -d /usr/local/share/motioneye ]; then
+    read -p "Do you want to remove the working directory /usr/local/share/motioneye? [y/N] " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        rm -rf /usr/local/share/motioneye
+        echo "Removed /usr/local/share/motioneye."
+    fi
+fi
+
 echo "--- Removing configuration directory ---"
 if [ -d /usr/local/etc/motioneye ]; then
     read -p "Do you want to remove the configuration directory /usr/local/etc/motioneye? [y/N] " -n 1 -r

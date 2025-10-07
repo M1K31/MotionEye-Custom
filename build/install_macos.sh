@@ -251,3 +251,30 @@ if [[ ! -f "setup.py" ]] || [[ ! -d "motioneye" ]]; then
 fi
 
 main "$@"
+    cp motioneye/extra/motioneye.conf.sample /usr/local/etc/motioneye/motioneye.conf
+else
+    echo "--- /usr/local/etc/motioneye/motioneye.conf already exists, skipping. ---"
+fi
+
+echo "--- Creating log directory [/var/log] and setting permissions ---"
+mkdir -p /var/log
+touch /var/log/motioneye.log
+chmod 640 /var/log/motioneye.log
+chown root:wheel /var/log/motioneye.log
+
+
+echo "--- Creating working directory [/usr/local/share/motioneye] ---"
+mkdir -p /usr/local/share/motioneye
+
+echo "--- Installing launchd service file [motioneye.plist] ---"
+# Unload the service if it's already running to ensure a clean start
+if [ -f /Library/LaunchDaemons/com.motioneye-project.motioneye.plist ]; then
+    echo "--- Unloading existing service ---"
+    launchctl unload /Library/LaunchDaemons/com.motioneye-project.motioneye.plist || true
+fi
+
+cp motioneye/extra/motioneye.plist /Library/LaunchDaemons/com.motioneye-project.motioneye.plist
+chown root:wheel /Library/LaunchDaemons/com.motioneye-project.motioneye.plist
+chmod 644 /Library/LaunchDaemons/com.motioneye-project.motioneye.plist
+
+
