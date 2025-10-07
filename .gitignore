@@ -48,6 +48,33 @@ nosetests.xml
 coverage.xml
 *.cover
 *.py,cover
+.pytest_cache/
+test-results/
+
+# Development and runtime files
+debug_env.py
+setup_dev.sh
+test-system-readiness.sh
+*.log
+pre-build-test.log
+motioneye.log
+
+# Runtime directories
+run/
+log/
+media/Camera*/
+
+# Build artifacts
+build/lib/
+motioneye.egg-info/
+*.egg-info/
+
+# IDE and editor files
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
 .hypothesis/
 .pytest_cache/
 

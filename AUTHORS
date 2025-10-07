@@ -1,4 +1,17 @@
-A list with contributors can be found here: https://github.com/motioneye-project/motioneye/graphs/contributors 
+# Authors
 
-This version of MotionEye is maintained and updated by the developer below. 
-mikel smart <mikel.smart@outlook.com>
+## MotionEye Custom Maintainer
+- **Mikel Smart** <mikel.smart@outlook.com> - Project maintainer, MotionEye Lite, performance optimizations
+
+## Original MotionEye Project
+This project builds upon the excellent work of the original MotionEye project.
+
+**Original Contributors:** https://github.com/motioneye-project/motioneye/graphs/contributors
+
+## Acknowledgments
+- **MotionEye Team** - Original project foundation
+- **Motion Project** - Core video surveillance engine  
+- **Community Contributors** - Bug reports, feature requests, and testing
+
+## Contributing
+See [CONTRIBUTING.md](CONTRIBUTING.md) for information on how to contribute to this project.

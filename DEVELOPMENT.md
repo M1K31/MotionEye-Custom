@@ -1,108 +1,332 @@
-## macOS: quick venv setup (CMake, Homebrew deps, venv recreate)
+# Development Guide
 
-This project uses native extensions (OpenCV, dlib) that often need system build tools on macOS. Follow these steps to create a working Python virtualenv and install the project.
+This guide helps developers set up a local development environment for MotionEye Custom.
 
-1) Install prerequisites
+## 🚀 Quick Development Setup
 
-Install Xcode Command Line Tools (if not already installed):
+### Prerequisites
 
-```zsh
+#### All Platforms
+- Python 3.8+ (3.11 recommended for best compatibility)
+- Git
+- C++ compiler toolchain
+
+#### Platform-Specific Requirements
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt update
+sudo apt install build-essential cmake python3-dev pkg-config
+sudo apt install libjpeg-dev libpng-dev libtiff-dev libopenblas-dev
+```
+
+**macOS:**
+```bash
+# Install Xcode Command Line Tools
 xcode-select --install
+
+# Install Homebrew dependencies
+brew install cmake pkg-config openblas libjpeg libpng libtiff
 ```
 
-Install Homebrew (if you don't have it):
+**Windows:**
+- Install Visual Studio Build Tools
+- Use WSL2 with Linux setup (recommended)
 
-```zsh
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+### Development Environment Setup
+
+1. **Clone and Setup**
+   ```bash
+   git clone https://github.com/M1K31/MotionEye-Custom.git
+   cd MotionEye-Custom
+   
+   # Create virtual environment
+   python3 -m venv motioneye_env
+   source motioneye_env/bin/activate  # Linux/macOS
+   # motioneye_env\Scripts\activate  # Windows
+   
+   # Upgrade core tools
+   pip install --upgrade pip setuptools wheel
+   ```
+
+2. **Install Dependencies**
+   ```bash
+   # Install in development mode
+   pip install -e .
+   
+   # Install development tools
+   pip install pytest pytest-cov black flake8 pre-commit
+   
+   # Install pre-commit hooks
+   pre-commit install
+   ```
+
+3. **Verify Installation**
+   ```bash
+   # Run test suite
+   python -m pytest -v
+   
+   # Start development server
+   python -m motioneye.meyectl startserver
+   ```
+
+## 🧪 Testing
+
+### Running Tests
+```bash
+# Run all tests
+python -m pytest
+
+# Run with coverage
+python -m pytest --cov=motioneye --cov-report=html
+
+# Run specific test categories
+python -m pytest test_integration.py       # Integration tests
+python -m pytest test_motioneye_lite.py   # MotionEye Lite tests
+python -m pytest tests/                   # Unit tests
+
+# Run tests with verbose output
+python -m pytest -v -s
 ```
 
-2) Install required system packages via Homebrew
+### Test Categories
+- **Unit Tests:** `tests/` - Individual component testing
+- **Integration Tests:** `test_integration.py` - System-wide functionality
+- **Lite Tests:** `test_motioneye_lite.py` - MotionEye Lite specific features
 
-These packages are commonly needed to build OpenCV and dlib from source.
+### Writing Tests
+```python
+import pytest
+from motioneye import config
 
-```zsh
-# core build tools
-brew install cmake pkg-config
-# math & image libs
-brew install openblas libjpeg libpng libtiff
-# optional helpful libs for some opencv features
-brew install libomp boost
+def test_config_loading():
+    """Test configuration loading functionality."""
+    # Test implementation
+    assert config.load_default() is not None
 ```
 
-3) Recreate the virtualenv (clean, recommended)
+## 🔧 Code Quality
 
-```zsh
-# from the repo root
-rm -rf motioneye_env
-python3 -m venv motioneye_env
-source motioneye_env/bin/activate
-python -m pip install --upgrade pip setuptools wheel
+### Code Formatting
+```bash
+# Format code with Black
+black motioneye/ tests/
+
+# Check formatting
+black --check motioneye/
 ```
 
-4) Install the project and test dependencies
+### Linting
+```bash
+# Run flake8 linting
+flake8 motioneye/ tests/
 
-```zsh
-# install the package (this will build necessary wheels)
-python -m pip install .
-# install test runner
-python -m pip install pytest
-# run tests
-python -m pytest -q
+# Fix common issues automatically
+autopep8 --in-place --recursive motioneye/
 ```
 
-Notes and troubleshooting
+### Pre-commit Hooks
+Automatically run quality checks before commits:
+```bash
+pre-commit install
+# Now hooks run automatically on git commit
+```
 
-- Building `opencv-python` and `dlib` can take several minutes and requires CMake and a working compiler toolchain. If a build fails with missing headers like `emmintrin.h` or other compiler errors, ensure Xcode CLT is installed (step 1) and that Homebrew packages above are present.
-- If you run into incompatibilities with very new Python versions (e.g. 3.13+), consider using Python 3.11/3.12 (pyenv or Homebrew) because some packages provide prebuilt wheels for those versions.
-- If you'd rather avoid local builds, use Docker for a reproducible Linux environment (see `docker/Dockerfile` and `docker/docker-compose.yml`).
+## 🏗️ Project Architecture
 
-I have included an automation script `setup_dev.sh` to run these steps on macOS. If you prefer CI, there's also a GitHub Actions workflow that runs tests on Linux and macOS.
+### Directory Structure
+```
+motioneye/
+├── __init__.py          # Package initialization
+├── config.py            # Configuration management  
+├── server.py            # Web server and handlers
+├── monitor.py           # Camera monitoring
+├── motionctl.py         # Motion daemon control
+├── handlers/            # Web request handlers
+├── scripts/             # Utility scripts
+├── static/              # Web assets (CSS, JS, images)
+├── templates/           # Jinja2 HTML templates
+└── utils/               # Helper utilities
+```
 
-CI caching note
+### Key Components
+- **Server:** Tornado-based web application
+- **Config:** YAML-based configuration system
+- **Monitor:** Camera and motion detection management  
+- **Handlers:** HTTP request processing
+- **Templates:** Web interface rendering
 
-- The GitHub Actions workflow caches a `.venv` directory and pip's cache to speed up repeated runs. If you change Python versions or hit unexpected dependency issues after a cache restore, re-run `rm -rf .venv` locally (or in CI by changing the cache key) to force a clean install.
+### Adding New Features
+1. **Backend Logic:** Add to appropriate module in `motioneye/`
+2. **Web Interface:** Create handler in `handlers/` and template in `templates/`
+3. **API Endpoints:** Extend handlers with JSON responses
+4. **Tests:** Add unit tests in `tests/` and integration tests as needed
 
-## motionEye Lite Development (macOS)
+## 🍎 macOS Development (MotionEye Lite)
 
-For developers working on the embedded-systems approach for optimal macOS performance:
+For high-performance macOS development using embedded binaries:
 
-### Testing the Lite Build System
+### Lite Development Setup
+```bash
+# Build and install Lite version
+./build/install_macos.sh
 
-```zsh
-# Run comprehensive integration tests
+# Test Lite installation
 python test_motioneye_lite.py
 
-# Test specific components
-python -c "import subprocess; subprocess.run(['/usr/local/motioneye-lite/bin/motion', '-h'])"
-
-# Validate FFmpeg integration
-ls -la /usr/local/motioneye-lite/lib/libav*.a
+# Monitor performance
+/opt/motioneye-lite/bin/motion -h
 ```
 
-### Performance Monitoring
+### Lite Development Workflow
+1. **Modify Build Scripts:** Edit `build/build_motion_macos.sh`
+2. **Test Components:** Run Lite-specific tests
+3. **Performance Validation:** Compare against Docker performance  
+4. **Update Documentation:** Modify Lite-specific docs
 
-```zsh
-# Monitor motion daemon performance
-motioneye-lite monitor
+### Key Lite Files
+- `build/build_motion_macos.sh` - Main build script
+- `build/install_macos.sh` - Installation script  
+- `test_motioneye_lite.py` - Integration tests
+- `docs/MOTIONEYE_LITE.md` - Technical documentation
 
-# Check system resource usage
-top -pid $(pgrep -f "motion.*motioneye-lite")
+## 🐳 Docker Development
 
-# Validate 60-70% performance improvement
-# Compare: Docker vs Lite build CPU usage during camera operation
+### Development with Docker
+```bash
+# Build development image
+docker build -f docker/Dockerfile -t motioneye-dev .
+
+# Run with development setup
+docker run -it --rm \
+  -p 8765:8765 \
+  -v $(pwd):/app \
+  motioneye-dev bash
+
+# Inside container
+python -m pytest
+python -m motioneye.meyectl startserver
 ```
 
-### Lite Build Development Cycle
+### Multi-platform Testing
+```bash
+# Test ARM64 build
+docker buildx build --platform linux/arm64 -t motioneye-arm64 .
 
-1. **Modify build script**: Edit `build/build_motion_lite_macos.sh`
-2. **Test locally**: Run build and validate components  
-3. **Update tests**: Modify `test_motioneye_lite.py` for new features
-4. **Performance validation**: Ensure optimizations maintain 60-70% improvement
-5. **Documentation**: Update `docs/MOTIONEYE_LITE.md` and `docs/PERFORMANCE_ANALYSIS.md`
+# Test AMD64 build  
+docker buildx build --platform linux/amd64 -t motioneye-amd64 .
+```
 
-### Key Files for Lite Development
+## 🔍 Debugging
 
-- `build/build_motion_lite_macos.sh`: Main embedded build system
-- `test_motioneye_lite.py`: Comprehensive integration test suite  
-- `docs/MOTIONEYE_LITE.md`: Technical documentation
-- `docs/PERFORMANCE_ANALYSIS.md`: Performance benchmarks and analysis
+### Development Server
+```bash
+# Start with debug logging
+export DEBUG=1
+python -m motioneye.meyectl startserver --debug
+
+# Enable verbose logging
+export MOTIONEYE_LOG_LEVEL=DEBUG
+```
+
+### Common Issues
+
+**Import Errors:**
+```bash
+# Ensure virtual environment is activated
+source motioneye_env/bin/activate
+
+# Reinstall in development mode
+pip install -e .
+```
+
+**Camera Detection Issues:**
+```bash
+# List available video devices (Linux)
+ls -la /dev/video*
+
+# Test camera access
+v4l2-ctl --list-devices  # Linux
+system_profiler SPCameraDataType  # macOS
+```
+
+**Performance Issues:**
+```bash
+# Profile application
+python -m cProfile -o profile.stats -m motioneye.meyectl startserver
+
+# Analyze with py-spy (install separately)
+py-spy record -o profile.svg -d 60 -s -- python -m motioneye.meyectl startserver
+```
+
+## 📊 Performance Testing
+
+### Benchmarking
+```bash
+# Memory usage monitoring
+python -m memory_profiler motioneye/server.py
+
+# Load testing with multiple cameras
+# Configure test cameras in test environment
+```
+
+### MotionEye Lite Performance
+- Target: 60-70% better performance than Docker
+- Monitor: CPU usage, memory consumption, latency
+- Compare: Native vs Docker vs traditional installation methods
+
+## 🚀 Release Process
+
+### Preparation
+1. Update version in `setup.py` and `pyproject.toml`
+2. Update `NEW_FEATURES.md` and `CHANGELOG.md`
+3. Run full test suite across platforms
+4. Update documentation
+
+### Testing
+```bash
+# Full test suite
+python -m pytest -v --cov=motioneye
+
+# Integration tests
+python test_integration.py
+
+# Platform-specific tests
+python test_motioneye_lite.py  # macOS
+```
+
+### Building
+```bash
+# Build source distribution
+python setup.py sdist
+
+# Build wheel
+python setup.py bdist_wheel
+
+# Test installation from built package
+pip install dist/motioneye-*.whl
+```
+
+## 💡 Contributing Tips
+
+1. **Start Small:** Begin with bug fixes or documentation improvements
+2. **Follow Patterns:** Study existing code for style and architecture patterns
+3. **Test Thoroughly:** Add tests for new features and edge cases
+4. **Document Changes:** Update relevant documentation
+5. **Performance Conscious:** Consider impact on resource usage
+
+## 📚 Additional Resources
+
+- **API Documentation:** Generate with `pydoc` or `sphinx`
+- **Original Project:** [MotionEye Wiki](https://github.com/motioneye-project/motioneye/wiki)
+- **Motion Documentation:** [Motion Project](https://motion-project.github.io/)
+- **Tornado Documentation:** [Tornado Web Server](https://www.tornadoweb.org/)
+
+## 🆘 Getting Help
+
+- **Issues:** Report bugs and request features on GitHub Issues
+- **Discussions:** Join conversations on GitHub Discussions  
+- **Code Review:** Submit PRs for collaborative development
+- **Documentation:** Improve guides and help others learn
+
+Remember: Good development practices include regular commits, meaningful commit messages, and thorough testing!

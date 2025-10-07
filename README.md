@@ -1,156 +1,127 @@
-# CI: ![CI - Linux](https://github.com/M1K31/MotionEye-Custom/actions/workflows/ci-linux.yml/badge.svg) ![CI - macOS](https://github.com/M1K31/MotionEye-Custom/actions/workflows/ci-macos.yml/badge.svg)
+# MotionEye Custom
 
-# What is motionEye?
+[![CI - Linux](https://github.com/M1K31/MotionEye-Custom/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/M1K31/MotionEye-Custom/actions/workflows/ci-linux.yml) [![CI - macOS](https://github.com/M1K31/MotionEye-Custom/actions/workflows/ci-macos.yml/badge.svg)](https://github.com/M1K31/MotionEye-Custom/actions/workflows/ci-macos.yml) [![Docker Publish](https://github.com/M1K31/MotionEye-Custom/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/M1K31/MotionEye-Custom/actions/workflows/docker-publish.yml)
 
-**motionEye** is an online interface for the software [_motion_](https://motion-project.github.io/), a video surveillance program with motion detection.
+**MotionEye** is a web-based frontend for [Motion](https://motion-project.github.io/), providing an elegant interface for video surveillance with motion detection, facial recognition, and advanced automation features.
 
-Check out the [__wiki__](https://github.com/motioneye-project/motioneye/wiki) for more details. Changelog is available on the [__releases page__](https://github.com/motioneye-project/motioneye/releases).
+This repository contains an enhanced version of motionEye with performance optimizations, improved cross-platform support, and additional features.
 
-From version 0.43, **motionEye** is multilingual:
+## 🚀 Quick Start
 
-| [![](https://hosted.weblate.org/widgets/motioneye-project/-/287x66-black.png)<br>![](https://hosted.weblate.org/widgets/motioneye-project/-/multi-auto.svg)](https://hosted.weblate.org/engage/motioneye-project/) |
-| -: |
+### Docker (Recommended)
 
-You can contribute to translations on [__Weblate__](https://hosted.weblate.org/projects/motioneye-project).
-
-# Installation
-
-This repository contains a development version of motionEye with new features. The instructions below are for installing this version from the local source code.
-
-**For instructions on how to install the official, stable release of motionEye, please refer to the [official project wiki](https://github.com/motioneye-project/motioneye/wiki).**
-
-For a guide on the new features in this version, please see [`NEW_FEATURES.md`](./NEW_FEATURES.md).
-
-### For Developers (installing from this source code)
-
-These instructions will install the version of motionEye from your local checkout. For uninstallation instructions, see [`UNINSTALL.md`](./UNINSTALL.md).
-
-1.  **Install Dependencies:**
-    *   **For Linux (Debian/Ubuntu):**
-        For a basic installation, the following packages are required:
-        ```sh
-        sudo apt update
-        sudo apt --no-install-recommends install python3 python3-pip python3-setuptools motion ffmpeg v4l-utils
-        ```
-        To enable all features (like Facial Recognition), additional build tools are needed to compile dependencies:
-        ```sh
-        sudo apt --no-install-recommends install build-essential cmake python3-dev libopenblas-dev liblapack-dev libjpeg-dev libboost-python-dev
-        ```
-    *   **For macOS:** 
-        - **Recommended (motionEye Lite):** `./build/build_motion_lite_macos.sh` - High-performance embedded build
-        - **Standard:** `./build/build_motion_macos.sh` - Traditional Homebrew-based build  
-        - **Docker fallback:** See **[Platform Compatibility](#platform-compatibility)** section
-    *   **For Docker (All Platforms):**
-        ```sh
-        docker build -f docker/Dockerfile.ci -t motioneye-local .
-        docker run -p 8765:8765 motioneye-local
-        ```
-        To enable all features (like Facial Recognition), additional build tools are needed to compile dependencies:
-        ```sh
-        sudo apt --no-install-recommends install build-essential cmake python3-dev libopenblas-dev liblapack-dev libjpeg-dev libboost-python-dev
-        ```
-
-2.  **Install motionEye from local source:** Navigate to the root of this repository and run:
-    ```sh
-    sudo python3 -m pip install .
-    ```
-    This command installs motionEye and all its Python dependencies, including `opencv`, `face_recognition`, and `paho-mqtt`.
-
-3.  **Run post-installation setup:**
-    *   **For Linux:** `sudo motioneye_init`
-    *   **For macOS:** `sudo ./build/install_macos.sh`
-    > **Note:** If you get a `command not found` error when running `sudo motioneye_init`, your system's `PATH` for `sudo` may be missing the directory where `pip` installs executables. You can fix this by finding the script's location (`pip show -f motioneye | grep motioneye_init`) and running it with its full path, e.g., `sudo /home/user/.local/bin/motioneye_init`.
-
-### Running for Development (local instance)
-
-If you are a developer and you want to run motionEye without installing it as a system-wide service, you can run it directly from the source tree. This is useful for testing and debugging.
-
-> **Note:** It is highly recommended to use a Python virtual environment (`venv`) for development to avoid conflicts with system packages.
-
-1.  **Install Dependencies:** Follow the dependency installation instructions in the "For Developers" section above. Make sure you have installed both the system packages (like `motion` and `ffmpeg`) and the Python packages (e.g., by running `pip install .` inside your virtual environment).
-
-2.  **Create Local Directories:** The server requires several local directories to store configuration, logs, and media files. Create them in the project root:
-    ```sh
-    mkdir -p conf run log media
-    ```
-
-3.  **Create a Local Configuration File:** You will need a configuration file to tell motionEye where to find your local directories.
-    *   First, get the full path to your project directory by running `pwd`.
-    *   Create a new file named `conf/motioneye.conf`.
-    *   Add the following content to the file, replacing `/path/to/your/project` with the actual path you got from `pwd`:
-        ```
-        # Local configuration for motionEye development
-        conf_path /path/to/your/project/conf
-        run_path /path/to/your/project/run
-        log_path /path/to/your/project/log
-        media_path /path/to/your/project/media
-        listen 0.0.0.0
-        port 8765
-        log_level info
-        ```
-
-3.  **Run the Server:** Now you can start the server using your local configuration:
-    ```sh
-    python3 -m motioneye.meyectl startserver -c conf/motioneye.conf
-    ```
-    The server will be running in the foreground and will be accessible at `http://localhost:8765`.
-
-# Starting and Stopping the Server
-
-For detailed instructions on how to start and stop the motionEye server, for both development and production environments, please see [`LAUNCH.md`](./LAUNCH.md).
-
-# Upgrade
-
-### For Users (from PyPI)
-
-If you installed motionEye from PyPI, you can upgrade to the latest official release with:
-```sh
-sudo systemctl stop motioneye
-sudo python3 -m pip install --upgrade --pre motioneye
-sudo systemctl start motioneye
+```bash
+docker run -d \
+  --name motioneye \
+  -p 8765:8765 \
+  -v /etc/localtime:/etc/localtime:ro \
+  m1k31/motioneye-custom:latest
 ```
 
-## Platform Compatibility
+### Native Installation
 
-MotionEye has been thoroughly tested across multiple platforms. Here's the current compatibility status:
+#### Linux (Ubuntu/Debian)
+```bash
+# Install system dependencies
+sudo apt update
+sudo apt install python3 python3-pip motion ffmpeg v4l-utils
 
-### ✅ **Linux** (Fully Supported)
-- **Status**: Full functionality with native package installation
-- **Tested**: Docker containers (Ubuntu-based)
-- **Installation**: Use standard `apt` packages for `motion` and `ffmpeg`
-- **Recommendation**: Preferred platform for production deployment
-
-### ✅ **macOS** (Enhanced Support with motionEye Lite)
-- **Python Components**: ✅ Fully functional (motionEye web interface, APIs, analysis features)
-- **Motion Daemon**: ✅ **NEW: motionEye Lite** - Embedded-systems approach for optimal performance
-  - **Performance**: 60-70% better CPU efficiency vs Docker on older hardware
-  - **Compatibility**: Works on macOS 12+ including Mac mini 2014 and similar older systems
-  - **Installation**: `./build/build_motion_lite_macos.sh` (embedded static build)
-  - **Management**: Integrated `motioneye-lite` command for easy setup and control
-- **Traditional Approach**: 
-  - **macOS 13+**: Standard build with `./build/build_motion_macos.sh`
-  - **macOS 12**: May encounter Homebrew dependency conflicts
-- **Fallback**: Docker available for maximum compatibility
-- **Development**: Perfect for Python development and testing without camera hardware
-
-### 🐳 **Docker** (Recommended)
-- **Status**: ✅ Full cross-platform compatibility
-- **Benefits**: Consistent environment, all dependencies included
-- **Usage**: `docker run -p 8765:8765 your-motioneye-image`
-- **Best for**: Production deployment, older macOS systems, Windows users
-
-### Development Environment
-For developers working on motionEye itself:
-- ✅ **Python components**: Work perfectly on all platforms
-- ✅ **Testing suite**: Comprehensive test coverage (12 passed, 1 skipped)
-- ✅ **CI/CD**: GitHub Actions with Linux/macOS matrix testing
-- See `DEVELOPMENT.md` for detailed setup instructions
-
-### For Developers (from source)
-
-If you installed from source, you can update by fetching the latest code and reinstalling:
-```sh
-git pull
-sudo python3 -m pip install .
-sudo systemctl restart motioneye # Or restart the launchd service on macOS
+# Install motionEye
+pip3 install --user motioneye
+motioneye_init
 ```
+
+#### macOS (MotionEye Lite - Recommended)
+```bash
+# High-performance embedded build (60-70% better performance)
+./build/install_macos.sh
+```
+
+#### Windows
+Use Docker Desktop or WSL2 with the Linux installation method.
+
+## 📋 System Requirements
+
+- **CPU:** x86-64 or ARM64 (Apple Silicon supported)
+- **RAM:** Minimum 512MB, recommended 2GB+
+- **Storage:** 1GB+ available space
+- **OS:** Linux, macOS 10.14+, Windows 10+ (via Docker)
+- **Network:** For remote camera access and web interface
+
+## ✨ Features
+
+### Core Features
+- 🎥 **Multi-Camera Support** - Manage unlimited IP/USB cameras
+- 🔍 **Motion Detection** - Advanced algorithms with customizable sensitivity
+- 📱 **Responsive Web UI** - Access from any device with a web browser
+- 📧 **Smart Notifications** - Email, SMS, and webhook alerts
+- 🎬 **Video Recording** - Automatic recording with motion triggers
+- 📸 **Snapshot Capture** - Scheduled and motion-triggered photos
+
+### Enhanced Features (This Version)
+- 🤖 **Facial Recognition** - Identify known individuals automatically
+- 🏠 **Home Assistant Integration** - Native smart home connectivity
+- ⚡ **MotionEye Lite** - High-performance embedded build for macOS
+- 🐳 **Multi-Platform Docker** - ARM64 and AMD64 support
+- 📊 **Performance Monitoring** - Real-time system metrics
+- 🔐 **Enhanced Security** - Improved authentication and access controls
+
+### Supported Camera Types
+- IP Cameras (RTSP, HTTP, MJPEG)
+- USB/Webcams (V4L2)
+- Raspberry Pi Camera Module
+- Network video servers
+- Custom FFMPEG sources
+
+## 📚 Documentation
+
+- **[Installation Guide](docs/INSTALLATION.md)** - Detailed setup instructions
+- **[New Features](NEW_FEATURES.md)** - What's new in this version
+- **[MotionEye Lite](docs/MOTIONEYE_LITE.md)** - High-performance macOS build
+- **[Docker Deployment](docker/README.md)** - Container setup and configuration
+- **[Development Guide](DEVELOPMENT.md)** - Contributing and local development
+- **[Uninstall Guide](UNINSTALL.md)** - Complete removal instructions
+
+## 🔧 Configuration
+
+After installation, access the web interface at `http://localhost:8765` (default).
+
+### Initial Setup
+1. Create admin account on first launch
+2. Add cameras via the web interface
+3. Configure motion detection settings
+4. Set up notifications and recording preferences
+
+### Advanced Configuration
+- Motion detection tuning
+- Facial recognition training
+- Custom automation scripts
+- Network and security settings
+
+## 🤝 Contributing
+
+We welcome contributions! See our [Development Guide](DEVELOPMENT.md) for:
+- Setting up the development environment
+- Running tests and code quality checks
+- Submitting pull requests
+- Reporting issues and bugs
+
+## 🐛 Support
+
+- **Issues:** [GitHub Issues](https://github.com/M1K31/MotionEye-Custom/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/M1K31/MotionEye-Custom/discussions)
+- **Original Project:** [motionEye Wiki](https://github.com/motioneye-project/motioneye/wiki)
+
+## 📄 License
+
+This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built upon the excellent [motionEye](https://github.com/motioneye-project/motioneye) project
+- Powered by the [Motion](https://motion-project.github.io/) video surveillance software
+- Enhanced with modern web technologies and cross-platform optimizations
+
+---
+
+> **Note:** This is an enhanced fork with additional features. For the official stable release, visit the [original motionEye project](https://github.com/motioneye-project/motioneye).

@@ -1,6 +1,70 @@
 
-all: motioneye/locale/*/LC_MESSAGES/motioneye.mo motioneye/static/js/motioneye.*.json
+# MotionEye Custom - Build and Development Tasks
 
+.PHONY: all clean test install dev-install localization help
+
+# Default target
+all: localization
+
+# Localization targets
+localization: motioneye/locale/*/LC_MESSAGES/motioneye.mo motioneye/static/js/motioneye.*.json
+
+# Development targets  
+dev-install:
+	pip install -e .
+	pip install pytest pytest-cov black flake8 pre-commit
+
+test:
+	python -m pytest -v
+
+test-coverage:
+	python -m pytest --cov=motioneye --cov-report=html
+
+format:
+	black motioneye/ tests/
+
+lint:
+	flake8 motioneye/ tests/
+
+clean:
+	rm -rf build/ dist/ *.egg-info/
+	rm -rf __pycache__/ .pytest_cache/ htmlcov/
+	find . -name "*.pyc" -delete
+	find . -name "*.pyo" -delete
+
+install:
+	pip install .
+
+# Docker targets
+docker-build:
+	docker build -f docker/Dockerfile -t motioneye-custom .
+
+docker-run:
+	docker run -d -p 8765:8765 --name motioneye motioneye-custom
+
+help:
+	@echo "MotionEye Custom - Available Make Targets:"
+	@echo ""
+	@echo "Development:"
+	@echo "  dev-install    Install in development mode with dev dependencies"
+	@echo "  test          Run test suite"
+	@echo "  test-coverage Run tests with coverage report"
+	@echo "  format        Format code with Black"
+	@echo "  lint          Lint code with flake8"
+	@echo "  clean         Clean build artifacts and cache files"
+	@echo ""
+	@echo "Installation:"
+	@echo "  install       Install package"
+	@echo ""
+	@echo "Docker:"
+	@echo "  docker-build  Build Docker image"
+	@echo "  docker-run    Run Docker container"
+	@echo ""
+	@echo "Localization:"
+	@echo "  localization  Build all translation files"
+	@echo ""
+
+# Localization build targets
 %.mo: %.po
 	msgfmt -f $*.po -o $*.mo
 
