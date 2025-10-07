@@ -39,7 +39,5 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           file: ./docker/Dockerfile
-          build-args: |
-            SKIP_LITE_TESTS=true
           cache-from: type=gha
           cache-to: type=gha,mode=max
