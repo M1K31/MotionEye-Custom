@@ -1,23 +1,19 @@
 FROM debian:trixie-slim
 LABEL maintainer="Marcus Klein <himself@kleini.org>"
 
-# Replace lines 3-4 with:
+# Build arguments for user/group IDs
 ARG RUN_UID=1000
 ARG RUN_GID=1000
 
-# Add security hardening:
-USER motion:motion
-WORKDIR /app
-# Ensure no SUID/SGID binaries
-RUN find / -type f \( -perm -4000 -o -perm -2000 \) -delete 2>/dev/null || true
-
+# Copy application source and entrypoint
 COPY . /tmp/motioneye
 COPY docker/entrypoint.sh /entrypoint.sh
 
-# Build deps:
-# - armhf/riscv64: Python headers, C compiler and libjpeg for Pillow: https://pypi.org/project/pillow/#files, libcurl and libssl for pycurl: https://pypi.org/project/pycurl/#files
-RUN printf '%b' '[global]\nbreak-system-packages=true\n' > /etc/pip.conf && \
-    case "$(dpkg --print-architecture)" in \
+# Configure pip to allow system-wide package installation
+RUN printf '%b' '[global]\nbreak-system-packages=true\n' > /etc/pip.conf
+
+# Install system dependencies and build application
+RUN case "$(dpkg --print-architecture)" in \
       'armhf'|'riscv64') PACKAGES='python3-dev gcc libjpeg62-turbo-dev libcurl4-openssl-dev libssl-dev';; \
       *) PACKAGES='';; \
     esac && \
@@ -29,18 +25,24 @@ RUN printf '%b' '[global]\nbreak-system-packages=true\n' > /etc/pip.conf && \
     python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel && \
     python3 -m pip install --no-cache-dir /tmp/motioneye && \
     motioneye_init --skip-systemd --skip-apt-update && \
-    # Change uid/gid of user/group motion to match our desired IDs. This will
-    # make it easier to use execute motion as our desired user later.
+    # Configure motion user with desired UID/GID
     sed -i "s/^\(motion:[^:]*\):[0-9]*:[0-9]*:\(.*\)/\1:${RUN_UID}:${RUN_GID}:\2/" /etc/passwd && \
     sed -i "s/^\(motion:[^:]*\):[0-9]*:\(.*\)/\1:${RUN_GID}:\2/" /etc/group && \
+    # Set up configuration and data directories
     mv /etc/motioneye/motioneye.conf /etc/motioneye.conf.sample && \
     mkdir /var/log/motioneye /var/lib/motioneye && \
     chown motion:motion /var/log/motioneye /var/lib/motioneye && \
-    # Cleanup
+    # Security cleanup - remove SUID/SGID binaries
+    find / -type f \( -perm -4000 -o -perm -2000 \) -delete 2>/dev/null || true && \
+    # Package cleanup
     python3 -m pip uninstall -y pip setuptools wheel && \
     DEBIAN_FRONTEND="noninteractive" apt-get -qq autopurge $PACKAGES && \
     apt-get clean && \
     rm -r /var/lib/apt/lists /var/cache/apt /tmp/motioneye get-pip.py /root/.cache
+
+# Set runtime user (after motion user is created)
+USER motion:motion
+WORKDIR /app
 
 # R/W needed for motionEye to update configurations
 VOLUME /etc/motioneye
