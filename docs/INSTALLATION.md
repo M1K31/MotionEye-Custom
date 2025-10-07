@@ -184,39 +184,115 @@ camera:
     url: http://localhost:8765
 ```
 
-### 5. Service Management
+### 5. Server Management & Control
 
-#### Linux (systemd)
+#### Docker Commands
 ```bash
-# Start/stop service
-sudo systemctl start motioneye
-sudo systemctl stop motioneye
+# Basic container management
+docker start motioneye          # Start existing container
+docker stop motioneye           # Stop container
+docker restart motioneye        # Restart container
+docker rm motioneye             # Remove container
 
-# Enable auto-start
-sudo systemctl enable motioneye
+# Run new container with auto-restart
+docker run -d \
+  --name motioneye \
+  --restart unless-stopped \
+  -p 8765:8765 \
+  -v motioneye-config:/etc/motioneye \
+  -v motioneye-media:/var/lib/motioneye \
+  m1k31/motioneye-custom:latest
 
-# Check status
-sudo systemctl status motioneye
+# Monitor container
+docker logs motioneye           # View logs
+docker logs -f motioneye        # Follow logs in real-time
+docker exec -it motioneye bash  # Access container shell
+docker stats motioneye          # View resource usage
 ```
 
-#### macOS (launchd)
+#### Linux (Native Installation)
 ```bash
-# Create launch agent (optional)
-cp extras/motioneye.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/motioneye.plist
+# Service management (systemd)
+sudo systemctl start motioneye     # Start service
+sudo systemctl stop motioneye      # Stop service  
+sudo systemctl restart motioneye   # Restart service
+sudo systemctl reload motioneye    # Reload configuration
+
+# Auto-start configuration
+sudo systemctl enable motioneye    # Enable auto-start at boot
+sudo systemctl disable motioneye   # Disable auto-start
+
+# Service monitoring
+sudo systemctl status motioneye    # Check service status
+journalctl -u motioneye           # View service logs
+journalctl -fu motioneye          # Follow logs in real-time
+
+# Manual start (development/debugging)
+python3 -m motioneye.meyectl startserver
+python3 -m motioneye.meyectl startserver --debug  # Debug mode
 ```
 
-#### Docker
+#### macOS (MotionEye Lite)
 ```bash
-# Start/stop container
-docker start motioneye
-docker stop motioneye
+# Direct server control
+/opt/motioneye-lite/bin/meyectl startserver         # Start server (foreground)
+/opt/motioneye-lite/bin/meyectl startserver --debug # Start in debug mode
+
+# Background operation
+nohup /opt/motioneye-lite/bin/meyectl startserver > /tmp/motioneye.log 2>&1 &
+
+# Stop server
+pkill -f motioneye                  # Stop by process name
+kill $(pgrep -f motioneye)          # Stop using PID
+# Or use Ctrl+C if running in foreground
+
+# Check if running
+pgrep -f motioneye                  # Check if process is running
+ps aux | grep motioneye             # View process details
 
 # View logs
-docker logs motioneye
+tail -f /tmp/motioneye.log          # If running in background
+```
 
-# Auto-restart configuration
-docker run --restart unless-stopped ...
+#### macOS (Standard Installation)
+```bash
+# Activate virtual environment first
+source motioneye-env/bin/activate
+
+# Server control
+python -m motioneye.meyectl startserver            # Start server
+python -m motioneye.meyectl startserver --debug    # Debug mode
+
+# Background operation
+nohup python -m motioneye.meyectl startserver > /tmp/motioneye.log 2>&1 &
+
+# Stop server
+pkill -f "motioneye.meyectl startserver"
+# Or Ctrl+C if running in foreground
+
+# Optional: Create launchd service (auto-start)
+# Create ~/Library/LaunchAgents/com.motioneye.plist
+sudo launchctl load ~/Library/LaunchAgents/com.motioneye.plist
+sudo launchctl unload ~/Library/LaunchAgents/com.motioneye.plist
+```
+
+#### Common Server Options
+```bash
+# Configuration file
+--config /path/to/motioneye.conf   # Custom config file
+-c /path/to/motioneye.conf         # Short form
+
+# Port configuration
+--port 8080                        # Change default port (8765)
+-p 8080                           # Short form
+
+# Debug and logging
+--debug                           # Enable debug logging
+--log-level INFO                  # Set log level (DEBUG, INFO, WARNING, ERROR)
+
+# Examples
+python -m motioneye.meyectl startserver --port 8080 --debug
+/opt/motioneye-lite/bin/meyectl startserver -p 8080 -c /etc/motioneye.conf
 ```
 
 ## 🔍 Troubleshooting

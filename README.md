@@ -82,9 +82,73 @@ Use Docker Desktop or WSL2 with the Linux installation method.
 - **[Development Guide](DEVELOPMENT.md)** - Contributing and local development
 - **[Uninstall Guide](UNINSTALL.md)** - Complete removal instructions
 
+## 🎮 Server Management
+
+### Starting/Stopping MotionEye
+
+#### Docker
+```bash
+# Start container
+docker start motioneye
+# or run new container
+docker run -d --name motioneye -p 8765:8765 m1k31/motioneye-custom:latest
+
+# Stop container
+docker stop motioneye
+
+# Restart container
+docker restart motioneye
+
+# View logs
+docker logs motioneye
+```
+
+#### Linux (Native)
+```bash
+# Start service (systemd)
+sudo systemctl start motioneye
+
+# Stop service
+sudo systemctl stop motioneye
+
+# Restart service
+sudo systemctl restart motioneye
+
+# Enable auto-start at boot
+sudo systemctl enable motioneye
+
+# Check status
+sudo systemctl status motioneye
+```
+
+#### macOS (MotionEye Lite)
+```bash
+# Start server
+/opt/motioneye-lite/bin/meyectl startserver
+
+# Stop server (Ctrl+C in terminal or kill process)
+pkill -f motioneye
+
+# Start in background
+nohup /opt/motioneye-lite/bin/meyectl startserver > /tmp/motioneye.log 2>&1 &
+```
+
+#### macOS (Standard Installation)
+```bash
+# Activate virtual environment first
+source motioneye-env/bin/activate
+
+# Start server
+python -m motioneye.meyectl startserver
+
+# Stop server (Ctrl+C in terminal)
+# For background process:
+pkill -f "motioneye.meyectl startserver"
+```
+
 ## 🔧 Configuration
 
-After installation, access the web interface at `http://localhost:8765` (default).
+After starting the server, access the web interface at `http://localhost:8765` (default).
 
 ### Initial Setup
 1. Create admin account on first launch
