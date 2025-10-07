@@ -1,0 +1,105 @@
+name: CI - motionEye Lite
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'build/build_motion_lite_macos.sh'
+      - 'test_motioneye_lite.py'
+      - 'docs/MOTIONEYE_LITE.md'
+      - 'docs/PERFORMANCE_ANALYSIS.md'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'build/build_motion_lite_macos.sh'
+      - 'test_motioneye_lite.py'
+      - 'docs/MOTIONEYE_LITE.md'
+      - 'docs/PERFORMANCE_ANALYSIS.md'
+
+jobs:
+  test-lite:
+    name: Test motionEye Lite Components
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install system dependencies
+        run: |
+          brew update || true
+          brew install cmake pkg-config || true
+          
+      - name: Create Python environment
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install .
+          python -m pip install pytest
+          
+      - name: Test Lite build script exists
+        run: |
+          source .venv/bin/activate
+          # Test only components that don't require full Lite installation
+          python -c "
+          import unittest
+          import os
+          from pathlib import Path
+          
+          class TestLiteBuildComponents(unittest.TestCase):
+              def test_build_script_exists(self):
+                  script = Path('build/build_motion_lite_macos.sh')
+                  self.assertTrue(script.exists(), 'Lite build script missing')
+                  self.assertTrue(os.access(script, os.X_OK), 'Build script not executable')
+              
+              def test_documentation_exists(self):
+                  docs = [
+                      Path('docs/MOTIONEYE_LITE.md'),
+                      Path('docs/PERFORMANCE_ANALYSIS.md')
+                  ]
+                  for doc in docs:
+                      self.assertTrue(doc.exists(), f'{doc} missing')
+          
+          if __name__ == '__main__':
+              unittest.main()
+          "
+          
+      - name: Validate Lite test structure
+        run: |
+          source .venv/bin/activate
+          # Validate the test file structure without running installation-dependent tests
+          python -c "
+          import ast
+          import sys
+          
+          with open('test_motioneye_lite.py', 'r') as f:
+              tree = ast.parse(f.read())
+          
+          # Check for CI-aware test structure
+          has_skip_method = False
+          test_methods = []
+          
+          for node in ast.walk(tree):
+              if isinstance(node, ast.FunctionDef):
+                  if node.name == '_skip_if_not_lite_environment':
+                      has_skip_method = True
+                  elif node.name.startswith('test_'):
+                      test_methods.append(node.name)
+          
+          assert has_skip_method, 'Missing _skip_if_not_lite_environment method'
+          assert len(test_methods) >= 5, f'Expected at least 5 test methods, found {len(test_methods)}'
+          
+          print(f'✅ Found {len(test_methods)} test methods with CI skip capability')
+          "
+          
+      - name: Run CI-safe Lite tests
+        run: |
+          source .venv/bin/activate
+          # Set CI environment and run tests (should skip installation-dependent ones)
+          CI=true python test_motioneye_lite.py
+        env:
+          CI: true
