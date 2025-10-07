@@ -14,8 +14,8 @@ RUN printf '%b' '[global]\nbreak-system-packages=true\n' > /etc/pip.conf
 
 # Install system dependencies and build application
 RUN case "$(dpkg --print-architecture)" in \
-      'armhf'|'riscv64') PACKAGES='python3-dev gcc libjpeg62-turbo-dev libcurl4-openssl-dev libssl-dev';; \
-      *) PACKAGES='';; \
+      'armhf'|'arm64'|'riscv64') PACKAGES='python3-dev gcc cmake build-essential libjpeg62-turbo-dev libcurl4-openssl-dev libssl-dev';; \
+      *) PACKAGES='python3-dev gcc cmake build-essential';; \
     esac && \
     apt-get -q update && \
     DEBIAN_FRONTEND="noninteractive" apt-get -qq --option Dpkg::Options::="--force-confnew" --no-install-recommends install \
