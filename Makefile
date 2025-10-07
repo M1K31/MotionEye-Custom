@@ -14,17 +14,20 @@ dev-install:
 	pip install -e .
 	pip install pytest pytest-cov black flake8 pre-commit
 
+# Detect virtual environment
+PYTHON := $(shell if [ -f motioneye_env/bin/python ]; then echo motioneye_env/bin/python; else echo python3; fi)
+
 test:
-	python -m pytest -v
+	$(PYTHON) -m pytest -v
 
 test-coverage:
-	python -m pytest --cov=motioneye --cov-report=html
+	$(PYTHON) -m pytest --cov=motioneye --cov-report=html
 
 format:
-	black motioneye/ tests/
+	$(PYTHON) -m black motioneye/ tests/
 
 lint:
-	flake8 motioneye/ tests/
+	$(PYTHON) -m flake8 motioneye/ tests/
 
 clean:
 	rm -rf build/ dist/ *.egg-info/

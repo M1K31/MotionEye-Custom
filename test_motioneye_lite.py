@@ -23,7 +23,7 @@ class TestMotionEyeLite(unittest.TestCase):
         self.lite_binary = Path("/usr/local/motioneye-lite/bin/motion")
         self.lite_path = Path("/usr/local/motioneye-lite")
         self.build_script = self.project_root / "build" / "build_motion_lite_macos.sh"
-        self.management_script = self.project_root / "motioneye-lite"
+        self.management_script = self.project_root / "build" / "motioneye-lite-launcher.sh"
         
         # Check if we're in a CI environment or if Lite is not installed
         self.is_ci = os.getenv('CI') == 'true' or os.getenv('GITHUB_ACTIONS') == 'true'
