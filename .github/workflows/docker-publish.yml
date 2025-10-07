@@ -22,7 +22,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKER_USERNAME }}/im1k31s/motioneye-custom # Replace with your repo name
+          images: ${{ secrets.DOCKER_USERNAME }}/motioneye-custom # Replace with your repo name
           tags: |
             type=sha,format=long # Creates a unique tag based on the commit SHA
             type=raw,value=latest,enable={{is_default_branch}} # Tags 'latest' on main branch
@@ -34,3 +34,4 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          file: ./docker/Dockerfile
