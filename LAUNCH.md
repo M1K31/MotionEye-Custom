@@ -30,7 +30,10 @@ To stop the server, press `Ctrl+C` in the terminal.
 
 ## Production Launch (as a service)
 
-For a production environment, it is recommended to run motionEye as a system service. The `motioneye_init` script, which is run during installation, sets up a `systemd` service for this purpose.
+For a production environment, it is recommended to run motionEye as a system service. The behavior depends on your installation method:
+
+### Linux Systems
+The `motioneye_init` script sets up a `systemd` service:
 
 *   **To start the motionEye service:**
     ```sh
@@ -50,4 +53,45 @@ For a production environment, it is recommended to run motionEye as a system ser
 *   **To enable the service to start on boot:**
     ```sh
     sudo systemctl enable motioneye
+    ```
+
+### macOS Systems
+
+**For motionEye Lite installations** (high-performance embedded build):
+*   **To start the motion daemon:**
+    ```sh
+    motioneye-lite start
+    ```
+
+*   **To check the daemon status:**
+    ```sh
+    motioneye-lite status
+    ```
+
+*   **To stop the daemon:**
+    ```sh
+    motioneye-lite stop
+    ```
+
+*   **To monitor daemon activity:**
+    ```sh
+    motioneye-lite monitor
+    ```
+
+**For standard macOS installations:**
+The `install_macos.sh` script sets up a `launchd` service:
+
+*   **To start the motionEye service:**
+    ```sh
+    sudo launchctl load /Library/LaunchDaemons/com.motioneye-project.motioneye.plist
+    ```
+
+*   **To stop the service:**
+    ```sh
+    sudo launchctl unload /Library/LaunchDaemons/com.motioneye-project.motioneye.plist
+    ```
+
+*   **To check if the service is running:**
+    ```sh
+    sudo launchctl list | grep motioneye
     ```

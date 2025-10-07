@@ -61,3 +61,48 @@ I have included an automation script `setup_dev.sh` to run these steps on macOS.
 CI caching note
 
 - The GitHub Actions workflow caches a `.venv` directory and pip's cache to speed up repeated runs. If you change Python versions or hit unexpected dependency issues after a cache restore, re-run `rm -rf .venv` locally (or in CI by changing the cache key) to force a clean install.
+
+## motionEye Lite Development (macOS)
+
+For developers working on the embedded-systems approach for optimal macOS performance:
+
+### Testing the Lite Build System
+
+```zsh
+# Run comprehensive integration tests
+python test_motioneye_lite.py
+
+# Test specific components
+python -c "import subprocess; subprocess.run(['/usr/local/motioneye-lite/bin/motion', '-h'])"
+
+# Validate FFmpeg integration
+ls -la /usr/local/motioneye-lite/lib/libav*.a
+```
+
+### Performance Monitoring
+
+```zsh
+# Monitor motion daemon performance
+motioneye-lite monitor
+
+# Check system resource usage
+top -pid $(pgrep -f "motion.*motioneye-lite")
+
+# Validate 60-70% performance improvement
+# Compare: Docker vs Lite build CPU usage during camera operation
+```
+
+### Lite Build Development Cycle
+
+1. **Modify build script**: Edit `build/build_motion_lite_macos.sh`
+2. **Test locally**: Run build and validate components  
+3. **Update tests**: Modify `test_motioneye_lite.py` for new features
+4. **Performance validation**: Ensure optimizations maintain 60-70% improvement
+5. **Documentation**: Update `docs/MOTIONEYE_LITE.md` and `docs/PERFORMANCE_ANALYSIS.md`
+
+### Key Files for Lite Development
+
+- `build/build_motion_lite_macos.sh`: Main embedded build system
+- `test_motioneye_lite.py`: Comprehensive integration test suite  
+- `docs/MOTIONEYE_LITE.md`: Technical documentation
+- `docs/PERFORMANCE_ANALYSIS.md`: Performance benchmarks and analysis
