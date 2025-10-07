@@ -71,12 +71,12 @@ class FacesHandler(BaseHandler):
         if not base_name:  # Ensure we have a valid filename after sanitization
             self.set_status(400)
             return self.finish_json({'error': 'Invalid name provided.'})
-
+        
         extension = os.path.splitext(filename)[1].lower()
         if extension not in ['.png', '.jpg', '.jpeg']:
             self.set_status(400)
             return self.finish_json({'error': 'Invalid file type. Only PNG, JPG, and JPEG are allowed.'})
-
+        
         new_filename = f"{base_name}{extension}"
 
         # FIX: Ensure filename doesn't contain path separators
@@ -89,7 +89,7 @@ class FacesHandler(BaseHandler):
                 os.makedirs(FACES_DIR, mode=0o755)  # Secure permissions
 
             file_path = os.path.join(FACES_DIR, new_filename)
-
+            
             # FIX: Additional security check
             if not file_path.startswith(FACES_DIR):
                 self.set_status(400)
@@ -102,7 +102,7 @@ class FacesHandler(BaseHandler):
             self._clear_cache()
             logging.info(f"Added new face: {name} as {new_filename}")
             return self.finish_json({'name': name, 'filename': new_filename})
-
+            
         except OSError as e:
             logging.error(f"Failed to save face file: {e}")
             self.set_status(500)
@@ -121,7 +121,7 @@ class FacesHandler(BaseHandler):
             return self.finish_json({'error': 'Invalid filename.'})
 
         file_path = os.path.join(FACES_DIR, filename)
-
+        
         # FIX: Ensure path is within FACES_DIR
         if not file_path.startswith(FACES_DIR):
             self.set_status(400)

@@ -33,10 +33,10 @@ def execute_secure_command(cmd_args, timeout=30, cwd=None):
     """Securely execute command without shell injection vulnerabilities"""
     if not isinstance(cmd_args, list):
         raise ValueError("Command arguments must be provided as a list")
-
+    
     if not cmd_args:
         raise ValueError("Command arguments list cannot be empty")
-
+    
     # Validate arguments for dangerous characters
     dangerous_chars = ['|', '&', ';', '(', ')', '$', '`', '\\', '"', "'", '<', '>', '\n', '\r']
     for i, arg in enumerate(cmd_args):
@@ -44,7 +44,7 @@ def execute_secure_command(cmd_args, timeout=30, cwd=None):
         for char in dangerous_chars:
             if char in arg_str:
                 logging.warning(f"Potentially unsafe character '{char}' in command argument {i}: {arg_str}")
-
+    
     try:
         result = subprocess.run(
             cmd_args,
@@ -55,10 +55,10 @@ def execute_secure_command(cmd_args, timeout=30, cwd=None):
             text=True,
             check=False
         )
-
+        
         logging.debug(f'Command executed: {" ".join(cmd_args)}, return code: {result.returncode}')
         return result
-
+        
     except subprocess.TimeoutExpired:
         raise RuntimeError(f"Command timed out after {timeout} seconds: {' '.join(cmd_args)}")
     except FileNotFoundError:
@@ -83,19 +83,19 @@ def validate_device_path(device):
     """Validate and sanitize device path input to prevent injection attacks"""
     if not device:
         raise ValueError("Device path cannot be empty")
-
+    
     device = make_str(device)
-
+    
     # Allow only valid device paths
     valid_patterns = [
         r'^/dev/video\d+$',  # Standard video devices
         r'^/dev/v4l/by-id/[a-zA-Z0-9_.-]+$',  # Persistent device paths
         r'^/dev/v4l/by-path/[a-zA-Z0-9_:.-]+$'  # Path-based persistent devices
     ]
-
+    
     if not any(re.match(pattern, device) for pattern in valid_patterns):
         raise ValueError(f"Invalid device path format: {device}")
-
+    
     # Verify device exists and is a character device
     if os.path.exists(device):
         try:
@@ -104,7 +104,7 @@ def validate_device_path(device):
                 raise ValueError(f"Device {device} is not a character device")
         except OSError as e:
             raise ValueError(f"Cannot access device {device}: {e}")
-
+    
     return device
 
 def find_v4l2_ctl():
@@ -118,7 +118,7 @@ def list_devices():
     global _resolutions_cache, _ctrls_cache, _ctrl_values_cache
 
     logging.debug('listing V4L2 devices')
-
+    
     try:
         result = execute_secure_command(['v4l2-ctl', '--list-devices'], timeout=_V4L2_TIMEOUT)
         output = result.stdout
@@ -128,7 +128,7 @@ def list_devices():
 
     name = None
     devices = []
-
+    
     for line in output.split('\n'):
         if line.startswith('\t'):
             device = line.strip()
@@ -210,7 +210,7 @@ def list_resolutions(device):
 
                 resolutions.add((width, height))
                 logging.debug(f'found resolution {width}x{height} for device {device}')
-
+                
             except (ValueError, AttributeError) as e:
                 logging.warning(f'Invalid resolution format "{pair}": {e}')
                 continue
@@ -272,7 +272,7 @@ def list_ctrls(device):
         return {}
 
     controls = {}
-
+    
     for line in output.split('\n'):
         if not line:
             continue

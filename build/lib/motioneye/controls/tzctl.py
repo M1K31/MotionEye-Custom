@@ -57,19 +57,26 @@ def _get_time_zone_md5():
     if settings.LOCAL_TIME_FILE:
         return None
 
-    try:
-        output = utils.call_subprocess(
-            'find * -type f | xargs md5sum', shell=True, cwd='/usr/share/zoneinfo'
-        )
+    time_zone_by_md5 = {}
+    zoneinfo_dir = '/usr/share/zoneinfo'
 
+    try:
+        for root, _, files in os.walk(zoneinfo_dir):
+            for name in files:
+                path = os.path.join(root, name)
+                if not os.path.isfile(path) or os.path.islink(path):
+                    continue
+                try:
+                    with open(path, 'rb') as f:
+                        data = f.read()
+                    md5 = hashlib.md5(data).hexdigest()
+                    rel_path = os.path.relpath(path, zoneinfo_dir)
+                    time_zone_by_md5[md5] = rel_path
+                except Exception:
+                    continue  # Ignore files that can't be read
     except Exception as e:
         logging.error('getting md5 of zoneinfo files failed: %s' % e)
-
         return None
-
-    lines = [l for l in output.split('\n') if l]
-    lines = [l.split(None, 1) for l in lines]
-    time_zone_by_md5 = dict(lines)
 
     try:
         with open(settings.LOCAL_TIME_FILE, 'rb') as f:

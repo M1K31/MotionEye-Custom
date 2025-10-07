@@ -1,0 +1,362 @@
+#!/bin/bash
+# motionEye Lite Integration Script
+# Bridges native motion daemon with motionEye Python application
+# Optimized for Mac mini 2014
+
+set -e
+
+MOTIONEYE_LITE_DIR="/usr/local/motioneye-lite"
+MOTIONEYE_PROJECT_DIR="/Users/mikelsmart/Downloads/GitHubProjects/MotionEye-Custom"
+MOTION_BINARY="${MOTIONEYE_LITE_DIR}/bin/motion"
+CONFIG_DIR="${MOTIONEYE_LITE_DIR}/etc"
+DATA_DIR="${MOTIONEYE_LITE_DIR}/var/lib/motion"
+LOG_DIR="${MOTIONEYE_LITE_DIR}/var/log"
+PID_FILE="${MOTIONEYE_LITE_DIR}/var/run/motion-lite.pid"
+
+# Create required directories
+mkdir -p "${CONFIG_DIR}" "${DATA_DIR}" "${LOG_DIR}" "$(dirname ${PID_FILE})"
+
+show_usage() {
+    cat << EOF
+motionEye Lite Management Script
+
+USAGE:
+    $0 [COMMAND] [OPTIONS]
+
+COMMANDS:
+    install     Install and configure motionEye Lite
+    start       Start motion daemon and motionEye web interface  
+    stop        Stop all services
+    restart     Restart all services
+    status      Show service status
+    config      Edit configuration
+    logs        View logs
+    test        Test camera connectivity
+    performance Monitor system performance
+    help        Show this help message
+
+EXAMPLES:
+    $0 install                  # Install motionEye Lite
+    $0 start                    # Start services  
+    $0 test /dev/video0         # Test camera
+    $0 performance             # Monitor CPU/memory usage
+    $0 config                  # Edit main config
+
+PERFORMANCE TIPS for Mac mini 2014:
+    - Use 640x480 resolution for best performance
+    - Limit to 2 cameras maximum  
+    - Monitor CPU usage with 'performance' command
+    - Keep motion detection threshold >= 1500
+
+EOF
+}
+
+check_installation() {
+    if [ ! -f "${MOTION_BINARY}" ]; then
+        echo "❌ Motion binary not found at ${MOTION_BINARY}"
+        echo "Run: $0 install"
+        return 1
+    fi
+    
+    if [ ! -d "${MOTIONEYE_PROJECT_DIR}" ]; then
+        echo "❌ motionEye project not found at ${MOTIONEYE_PROJECT_DIR}"
+        echo "Please update MOTIONEYE_PROJECT_DIR in this script"
+        return 1
+    fi
+    
+    return 0
+}
+
+install_motioneye_lite() {
+    echo "=== Installing motionEye Lite ==="
+    
+    # Check and create installation directory with proper permissions
+    if [ ! -d "${MOTIONEYE_LITE_DIR}" ]; then
+        echo "Creating installation directory (requires sudo)..."
+        sudo mkdir -p "${MOTIONEYE_LITE_DIR}"
+        sudo chown $(whoami):staff "${MOTIONEYE_LITE_DIR}"
+        echo "✅ Installation directory created: ${MOTIONEYE_LITE_DIR}"
+    fi
+    
+    # Check if build is needed
+    if [ ! -f "${MOTION_BINARY}" ]; then
+        echo "Building motion daemon from source..."
+        cd "${MOTIONEYE_PROJECT_DIR}"
+        ./build/build_motion_lite_macos.sh
+    fi
+    
+    # Install configuration
+    if [ ! -f "${CONFIG_DIR}/motion.conf" ]; then
+        echo "Installing optimized configuration..."
+        cp "${MOTIONEYE_PROJECT_DIR}/build/motion-lite-template.conf" \
+           "${CONFIG_DIR}/motion.conf"
+    fi
+    
+    # Create camera-specific config
+    if [ ! -f "${CONFIG_DIR}/camera-1.conf" ]; then
+        cat > "${CONFIG_DIR}/camera-1.conf" << EOF
+# Camera 1 Configuration
+videodevice /dev/video0
+width 640
+height 480
+framerate 15
+threshold 1500
+stream_port 8081
+webcontrol_port 8080
+target_dir ${DATA_DIR}/camera1
+EOF
+    fi
+    
+    # Create integration with motionEye
+    create_motioneye_integration
+    
+    echo "✅ motionEye Lite installation completed"
+    echo "Configuration: ${CONFIG_DIR}/motion.conf"
+    echo "Start with: $0 start"
+}
+
+create_motioneye_integration() {
+    echo "Creating motionEye integration..."
+    
+    # Update motionEye configuration to use our motion binary
+    local motioneye_conf="${MOTIONEYE_PROJECT_DIR}/conf/motioneye.conf"
+    
+    if [ -f "${motioneye_conf}" ]; then
+        # Backup original
+        cp "${motioneye_conf}" "${motioneye_conf}.backup.$(date +%s)"
+        
+        # Update motion binary path
+        sed -i '' "s|motion_binary.*|motion_binary ${MOTION_BINARY}|" "${motioneye_conf}" || \
+        echo "motion_binary ${MOTION_BINARY}" >> "${motioneye_conf}"
+        
+        echo "✅ motionEye configuration updated"
+    fi
+}
+
+start_services() {
+    echo "=== Starting motionEye Lite Services ==="
+    
+    check_installation || return 1
+    
+    # Start motion daemon
+    echo "Starting motion daemon..."
+    if [ -f "${PID_FILE}" ] && kill -0 "$(cat ${PID_FILE})" 2>/dev/null; then
+        echo "Motion daemon already running (PID: $(cat ${PID_FILE}))"
+    else
+        "${MOTION_BINARY}" -c "${CONFIG_DIR}/motion.conf" -p "${PID_FILE}"
+        sleep 2
+        if [ -f "${PID_FILE}" ]; then
+            echo "✅ Motion daemon started (PID: $(cat ${PID_FILE}))"
+        else
+            echo "❌ Failed to start motion daemon"
+            return 1
+        fi
+    fi
+    
+    # Start motionEye web interface
+    echo "Starting motionEye web interface..."
+    cd "${MOTIONEYE_PROJECT_DIR}"
+    python -m motioneye.meyectl startserver -d -c conf/motioneye.conf
+    
+    echo ""
+    echo "✅ Services started successfully!"
+    echo "Web interface: http://localhost:8765"
+    echo "Motion stream: http://localhost:8081"
+    
+    show_performance_tips
+}
+
+stop_services() {
+    echo "=== Stopping motionEye Lite Services ==="
+    
+    # Stop motionEye web interface
+    echo "Stopping motionEye web interface..."
+    cd "${MOTIONEYE_PROJECT_DIR}"
+    python -m motioneye.meyectl stopserver -c conf/motioneye.conf 2>/dev/null || true
+    
+    # Stop motion daemon
+    echo "Stopping motion daemon..."
+    if [ -f "${PID_FILE}" ]; then
+        local pid=$(cat "${PID_FILE}")
+        if kill -0 "$pid" 2>/dev/null; then
+            kill "$pid"
+            sleep 2
+            if kill -0 "$pid" 2>/dev/null; then
+                kill -9 "$pid"
+            fi
+            rm -f "${PID_FILE}"
+            echo "✅ Motion daemon stopped"
+        else
+            echo "Motion daemon not running"
+        fi
+    else
+        echo "Motion daemon PID file not found"
+    fi
+    
+    echo "✅ All services stopped"
+}
+
+show_status() {
+    echo "=== motionEye Lite Status ==="
+    
+    # Motion daemon status
+    if [ -f "${PID_FILE}" ] && kill -0 "$(cat ${PID_FILE})" 2>/dev/null; then
+        echo "✅ Motion daemon: Running (PID: $(cat ${PID_FILE}))"
+    else
+        echo "❌ Motion daemon: Stopped"
+    fi
+    
+    # motionEye web interface status
+    if curl -s http://localhost:8765 >/dev/null 2>&1; then
+        echo "✅ motionEye web: Running (http://localhost:8765)"
+    else
+        echo "❌ motionEye web: Stopped"
+    fi
+    
+    # System resources
+    echo ""
+    echo "=== System Resources ==="
+    echo "CPU usage: $(top -l 1 -n 0 | grep "CPU usage" | awk '{print $3}' | sed 's/\%//')"
+    echo "Memory: $(vm_stat | grep "Pages active" | awk '{print $3}' | sed 's/\.//')KB active"
+    echo "Load average: $(uptime | awk -F'load averages:' '{print $2}')"
+}
+
+monitor_performance() {
+    echo "=== Performance Monitoring for Mac mini 2014 ==="
+    echo "Press Ctrl+C to stop monitoring"
+    echo ""
+    
+    while true; do
+        clear
+        echo "=== motionEye Lite Performance Monitor ==="
+        echo "Time: $(date)"
+        echo ""
+        
+        # CPU usage
+        local cpu_usage=$(top -l 1 -n 0 | grep "CPU usage" | awk '{print $3}' | sed 's/%//')
+        echo "CPU Usage: ${cpu_usage}%"
+        if (( $(echo "$cpu_usage > 80" | bc -l) )); then
+            echo "⚠️  HIGH CPU USAGE - Consider reducing camera resolution/framerate"
+        fi
+        
+        # Memory usage
+        local mem_pressure=$(memory_pressure | grep "System-wide memory free percentage" | awk '{print $5}' | sed 's/%//')
+        echo "Memory free: ${mem_pressure}%"
+        
+        # Motion processes
+        echo ""
+        echo "Motion processes:"
+        ps aux | grep motion | grep -v grep | awk '{printf "  PID %s: CPU %.1f%%, MEM %.1f%%\n", $2, $3, $4}'
+        
+        # Recommendations
+        echo ""
+        echo "=== Recommendations for Mac mini 2014 ==="
+        if (( $(echo "$cpu_usage > 70" | bc -l) )); then
+            echo "• Reduce framerate to 10-12 FPS"
+            echo "• Lower resolution to 640x480"
+            echo "• Increase motion threshold"
+        else
+            echo "• Performance is good"
+        fi
+        
+        sleep 5
+    done
+}
+
+show_performance_tips() {
+    echo ""
+    echo "=== Performance Tips for Mac mini 2014 ==="
+    echo "• Monitor CPU usage: $0 performance"
+    echo "• Recommended max: 2 cameras at 640x480 @ 15fps"  
+    echo "• Keep CPU usage under 80% sustained"
+    echo "• Use motion threshold >= 1500 for indoor cameras"
+    echo "• Disable motion recording if not needed"
+}
+
+test_camera() {
+    local device=${1:-"/dev/video0"}
+    echo "=== Testing Camera: ${device} ==="
+    
+    if [ ! -e "$device" ]; then
+        echo "❌ Camera device not found: $device"
+        echo "Available video devices:"
+        ls -la /dev/video* 2>/dev/null || echo "No video devices found"
+        return 1
+    fi
+    
+    echo "✅ Camera device exists: $device"
+    
+    # Test with motion binary
+    if [ -f "${MOTION_BINARY}" ]; then
+        echo "Testing motion daemon compatibility..."
+        timeout 5 "${MOTION_BINARY}" -c /dev/null -s 2>&1 | head -5 || true
+    fi
+    
+    echo "✅ Camera test completed"
+}
+
+edit_config() {
+    local config_file="${CONFIG_DIR}/motion.conf"
+    
+    echo "Opening configuration file: $config_file"
+    
+    if [ ! -f "$config_file" ]; then
+        echo "Configuration file not found. Installing default..."
+        install_motioneye_lite
+    fi
+    
+    # Use default macOS editor
+    ${EDITOR:-open} "$config_file"
+}
+
+view_logs() {
+    echo "=== motionEye Lite Logs ==="
+    
+    # Motion logs
+    if [ -f "${LOG_DIR}/motion.log" ]; then
+        echo "Motion daemon log (last 20 lines):"
+        tail -20 "${LOG_DIR}/motion.log"
+    fi
+    
+    # System logs  
+    echo ""
+    echo "System logs for motion:"
+    log show --last 1h --predicate 'process == "motion"' 2>/dev/null | tail -10 || \
+    echo "No recent motion logs found"
+}
+
+# Main command handling
+case "${1:-help}" in
+    install)
+        install_motioneye_lite
+        ;;
+    start)
+        start_services
+        ;;
+    stop)
+        stop_services
+        ;;
+    restart)
+        stop_services
+        sleep 2
+        start_services
+        ;;
+    status)
+        show_status
+        ;;
+    config)
+        edit_config
+        ;;
+    logs)
+        view_logs
+        ;;
+    test)
+        test_camera "$2"
+        ;;
+    performance)
+        monitor_performance
+        ;;
+    help|*)
+        show_usage
+        ;;
+esac

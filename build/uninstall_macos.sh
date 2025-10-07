@@ -1,19 +1,72 @@
 #!/bin/bash
+#
+# macOS Uninstallation Script for motionEye
+# Handles both Standard and Lite installations
+#
 
-# This script uninstalls motionEye and its dependencies on macOS.
-# It must be run with root permissions.
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-echo "--- Checking for root permissions ---"
+# Logging
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+echo ""
+echo "========================================="
+echo "   motionEye macOS Uninstallation"
+echo "========================================="
+echo ""
+
+log_info "Checking for root permissions..."
 if (( UID )); then
-  echo 'ERROR: Root permissions required. Please run this command with "sudo". Aborting...'
+  log_error "Root permissions required. Please run this command with 'sudo'"
   exit 1
 fi
 
-echo "--- Unloading and removing motionEye service ---"
+# Check for motionEye Lite installation
+if [ -d "/usr/local/motioneye-lite" ]; then
+    log_info "Detected motionEye Lite installation"
+    
+    # Stop and remove Lite service if running
+    if command -v motioneye-lite >/dev/null 2>&1; then
+        log_info "Stopping motionEye Lite service..."
+        motioneye-lite stop || true
+    fi
+    
+    # Remove Lite installation
+    log_info "Removing motionEye Lite installation..."
+    rm -rf /usr/local/motioneye-lite
+    
+    # Remove Lite management script
+    if [ -f /usr/local/bin/motioneye-lite ]; then
+        rm -f /usr/local/bin/motioneye-lite
+    fi
+    
+    log_success "motionEye Lite uninstalled"
+fi
+
+log_info "Unloading and removing motionEye service..."
 if [ -f /Library/LaunchDaemons/com.motioneye-project.motioneye.plist ]; then
     launchctl unload /Library/LaunchDaemons/com.motioneye-project.motioneye.plist || true
     rm -f /Library/LaunchDaemons/com.motioneye-project.motioneye.plist
-    echo "Removed launchd service."
+    log_success "Removed launchd service"
 fi
 
 echo "--- Uninstalling motioneye Python package ---"

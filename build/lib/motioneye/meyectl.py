@@ -40,16 +40,16 @@ def cleanup_camera_resources():
     """Clean up camera resources and motion processes (no sudo required)"""
     try:
         print("Cleaning up camera resources...")
-
+        
         # Kill processes owned by current user
         subprocess.run(['pkill', '-f', 'motion'], check=False)
         subprocess.run(['pkill', '-f', 'python.*motion'], check=False)
         subprocess.run(['pkill', '-f', 'python.*camera'], check=False)
-
+        
         # Alternative to modprobe: just wait for system to release camera
         print("Waiting for camera to be released...")
         # Camera should be available again after processes are killed
-
+        
         print("Camera cleanup complete!")
     except Exception as e:
         print(f"Cleanup warning: {e}")
@@ -360,18 +360,14 @@ def check_and_kill_existing_processes():
         for pid in other_pids:
             print(f"  - PID: {pid}")
 
-        answer = input("Do you want to terminate them? (y/n): ").lower()
-        if answer == 'y':
-            for pid in other_pids:
-                try:
-                    os.kill(pid, signal.SIGKILL)
-                    print(f"  - Terminated process {pid}")
-                except OSError as e:
-                    print(f"  - Failed to terminate process {pid}: {e}")
-            print("INFO: Existing processes terminated.")
-        else:
-            print("INFO: Aborting startup. Please manually stop the existing processes.")
-            sys.exit(0)
+        print("INFO: Automatically terminating conflicting processes.")
+        for pid in other_pids:
+            try:
+                os.kill(pid, signal.SIGKILL)
+                print(f"  - Terminated process {pid}")
+            except OSError as e:
+                print(f"  - Failed to terminate process {pid}: {e}")
+        print("INFO: Existing processes terminated.")
 
     except FileNotFoundError:
         # pgrep not found, we can't check for processes

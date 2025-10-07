@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: [3.11, 3.13]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Cache venv and pip
+        uses: actions/cache@v4
+        with:
+          path: |
+            .venv
+            ~/.cache/pip
+          key: ${{ runner.os }}-venv-${{ matrix.python }}-${{ hashFiles('**/pyproject.toml', '**/setup.cfg', '**/setup.py') }}
+          restore-keys: |
+            ${{ runner.os }}-venv-${{ matrix.python }}-
+      - name: Install system deps (mac)
+        if: runner.os == 'macOS'
+        run: |
+          brew update || true
+          brew install cmake pkg-config || true
+          brew install openblas libjpeg libpng libtiff || true
+          brew install libomp boost || true
+      - name: Install system deps (ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake python3-dev libopenblas-dev libjpeg-dev libpng-dev libx11-dev libglib2.0-0 libsm6 libxext6
+      - name: Create venv and install
+        run: |
+          if [ -d .venv ]; then
+            echo ".venv restored from cache; activating"
+          else
+            python -m venv .venv
+          fi
+          source .venv/bin/activate
+          python -m pip install --upgrade pip setuptools wheel
+          # install package and test deps; this is idempotent and fast when cache is present
+          python -m pip install .
+          python -m pip install pytest
+      - name: Run tests
+        run: |
+          source .venv/bin/activate
+          python -m pytest -q

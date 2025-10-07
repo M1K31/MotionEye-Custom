@@ -108,11 +108,11 @@ class RelayEventHandler(BaseHandler):
     def process_face_recognition(self, camera_id, filename, camera_config):
         """Process face recognition for motion events"""
         logging.info(f"process_face_recognition called for camera {camera_id}, file: {filename}")
-
+        
         if not FACE_RECOGNITION_AVAILABLE:
             logging.warning("Face recognition not available - skipping")
             return
-
+        
         try:
             logging.info("Getting face manager...")
             face_manager = get_face_manager()
@@ -123,7 +123,7 @@ class RelayEventHandler(BaseHandler):
                 cwd = os.getcwd()
                 logging.info(f"Current working directory: {cwd}")
                 logging.info(f"Received filename: {filename}")
-
+                
                 # Handle relative paths - check conf/media and media directories
                 actual_file = None
                 if not os.path.isabs(filename):
@@ -142,10 +142,10 @@ class RelayEventHandler(BaseHandler):
                                 actual_file = path
                                 logging.info(f"Found image file at: {actual_file} (attempt {attempt + 1})")
                                 break
-
+                        
                         if actual_file:
                             break
-
+                        
                         if attempt < 5:
                             time.sleep(0.5)
                             logging.info(f"File not found yet, waiting... (attempt {attempt + 1})")
@@ -156,16 +156,16 @@ class RelayEventHandler(BaseHandler):
                         logging.error(f"Could not find image file after waiting. CWD: {cwd}, Original: {filename}")
                         logging.error(f"Final check - tried paths: {possible_paths}")
                         return
-
+                
                 # Process face recognition
                 faces = face_manager.process_motion_event(camera_id, filename)
-
+                
                 if faces:
                     recognized_names = [
-                        face['name'] for face in faces
+                        face['name'] for face in faces 
                         if face['name'] != 'Unknown' and face['confidence'] >= 0.6
                     ]
-
+                    
                     if recognized_names:
                         logging.info(f"Camera {camera_id}: Face recognition detected - {', '.join(recognized_names)}")
                     else:
@@ -174,7 +174,7 @@ class RelayEventHandler(BaseHandler):
                     logging.info(f"Camera {camera_id}: No faces detected")
             else:
                 logging.warning("Face manager not available or disabled")
-
+                
         except Exception as e:
             logging.error(f"Face recognition error for camera {camera_id}: {e}")
             import traceback

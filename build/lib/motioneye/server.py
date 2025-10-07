@@ -421,18 +421,78 @@ def make_app(debug: bool = False) -> Application:
         log_function=_log_request,
         static_path=settings.STATIC_PATH,
         static_url_prefix='/static/',
+        xsrf_cookies=True,
+        cookie_secret=settings.COOKIE_SECRET,
     )
+
+
+def setup_memory_management(ioloop):
+    """Setup periodic memory management"""
+    import gc
+    from tornado.ioloop import PeriodicCallback
+    import psutil
+
+    def perform_gc():
+        """Perform garbage collection and log memory stats"""
+        collected = gc.collect()
+
+        if collected > 100:
+            logging.debug(f"Garbage collected {collected} objects")
+
+        # Log memory usage periodically
+        process = psutil.Process()
+        memory_mb = process.memory_info().rss / 1024 / 1024
+
+        if memory_mb > 500:  # Alert if using >500MB
+            logging.warning(f"High memory usage: {memory_mb:.1f}MB")
+
+    # Run every 5 minutes
+    gc_callback = PeriodicCallback(perform_gc, 300000)
+    gc_callback.start()
+
+    logging.info("Memory management enabled")
+
+
+def configure_high_performance_ioloop():
+    """Configure Tornado for maximum performance"""
+    import tornado.platform.asyncio
+    import asyncio
+    import logging
+
+    # Use uvloop if available (3x faster than asyncio)
+    try:
+        import uvloop
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+        logging.info("Using uvloop for high-performance event loop")
+    except ImportError:
+        logging.info("uvloop not available, using default asyncio")
+
+    # Configure Tornado
+    tornado.platform.asyncio.AsyncIOMainLoop().install()
+
+    # Increase file descriptor limit
+    import resource
+    try:
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        resource.setrlimit(resource.RLIMIT_NOFILE, (min(4096, hard), hard))
+        logging.info(f"File descriptor limit increased to {min(4096, hard)}")
+    except Exception as e:
+        logging.warning(f"Could not increase file descriptor limit: {e}")
 
 
 def run():
     import motioneye
-    from motioneye import cleanup, mjpgclient, motionctl, tasks, wsswitch
+    from motioneye import cleanup, mjpgclient, motionctl, tasks, wsswitch, database, monitor
     from motioneye.controls import smbctl
 
+    configure_high_performance_ioloop()
     configure_signals()
     logging.info(_('saluton! ĉi tio estas motionEye-servilo ') + motioneye.VERSION)
 
     test_requirements()
+
+    # Initialize the database
+    database.init_db()
 
     # Initialize Home Assistant MQTT agent
     main_config = config.get_main()
@@ -447,6 +507,10 @@ def run():
 
     else:
         start_motion()
+
+    # Start the motion daemon monitor
+    daemon_monitor = monitor.MotionDaemonMonitor()
+    daemon_monitor.start_monitoring()
 
     # Publish Home Assistant discovery messages for all cameras
     if ha_agent:
@@ -472,6 +536,8 @@ def run():
         smbctl.start()
         logging.info('smb mounts started')
 
+    setup_memory_management(IOLoop.current())
+
     template.add_context('static_path', 'static/')
     template.add_context('lingvo', settings.lingvo)
 
@@ -481,6 +547,8 @@ def run():
         log_function=_log_request,
         static_path=settings.STATIC_PATH,
         static_url_prefix='/static/',
+        xsrf_cookies=True,
+        cookie_secret=settings.COOKIE_SECRET,
     )
 
     application.listen(settings.PORT, settings.LISTEN)

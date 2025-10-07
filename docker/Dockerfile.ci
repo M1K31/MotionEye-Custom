@@ -1,0 +1,42 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install a small set of build deps that are commonly needed by Python packages.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       build-essential gcc libssl-dev libffi-dev pkg-config ca-certificates \
+       cmake python3-dev libopenblas-dev liblapack-dev libjpeg-dev libpng-dev libx11-dev \
+       libboost-dev libgl1 libsm6 libxext6 libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy project into the image
+COPY . /app
+
+# Upgrade pip and install the package and test runner
+RUN python -m pip install --upgrade pip setuptools wheel
+RUN python -m pip install .
+RUN python -m pip install pytest
+
+CMD ["pytest", "-q"]
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install a small set of build deps that are commonly needed by Python packages.
+RUN apt-get update \
+     && apt-get install -y --no-install-recommends \
+         build-essential gcc libssl-dev libffi-dev pkg-config ca-certificates \
+                 cmake python3-dev libopenblas-dev liblapack-dev libjpeg-dev libpng-dev libx11-dev \
+                 libboost-dev libgl1 libsm6 libxext6 libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy project into the image
+COPY . /app
+
+# Upgrade pip and install the package and test runner
+RUN python -m pip install --upgrade pip setuptools wheel
+RUN python -m pip install .
+RUN python -m pip install pytest
+
+CMD ["pytest", "-q"]

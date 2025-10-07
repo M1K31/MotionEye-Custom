@@ -188,7 +188,7 @@ class FaceRecognitionManager:
                 # Convert numpy array to base64 string
                 encoding_b64 = base64.b64encode(encoding.tobytes()).decode('utf-8')
                 serializable_encodings.append(encoding_b64)
-
+            
             data = {
                 'encodings': serializable_encodings,
                 'names': self.known_face_names,
@@ -213,38 +213,38 @@ class FaceRecognitionManager:
             if os.path.exists(self.encodings_file):
                 with open(self.encodings_file, 'r') as f:
                     data = json.load(f)
-
+                
                 # Validate data structure
                 if not isinstance(data, dict) or 'encodings' not in data:
                     self.logger.warning("Invalid face encodings file format")
                     self.known_face_encodings = []
                     self.known_face_names = []
                     return
-
+                
                 # Convert base64 strings back to numpy arrays
                 self.known_face_encodings = []
                 encoding_shape = data.get('encoding_shape', (128,))  # Default shape
                 encoding_dtype = data.get('encoding_dtype', 'float64')  # Default dtype
-
+                
                 for encoding_b64 in data['encodings']:
                     try:
                         # Decode base64 and convert to numpy array
                         encoding_bytes = base64.b64decode(encoding_b64.encode('utf-8'))
                         encoding_array = np.frombuffer(encoding_bytes, dtype=encoding_dtype)
-
+                        
                         # Reshape if shape information is available
                         if encoding_shape:
                             encoding_array = encoding_array.reshape(encoding_shape)
-
+                        
                         self.known_face_encodings.append(encoding_array)
                     except Exception as e:
                         self.logger.error(f"Error decoding face encoding: {e}")
                         continue
-
+                
                 self.known_face_names = data.get('names', [])
                 
                 self.logger.info(f"Loaded {len(self.known_face_encodings)} face encodings securely")
-
+                
             else:
                 # Check for legacy pickle file and convert it
                 legacy_pickle_file = os.path.join(self.faces_folder, 'face_encodings.pkl')
@@ -267,31 +267,31 @@ class FaceRecognitionManager:
         """Convert legacy pickle file to secure JSON format"""
         try:
             import pickle
-
+            
             # Backup the pickle file first
             backup_file = f"{pickle_file}.backup"
             os.rename(pickle_file, backup_file)
-
+            
             # Load from backup
             with open(backup_file, 'rb') as f:
                 data = pickle.load(f)
-
+            
             # Extract data
             self.known_face_encodings = data.get('encodings', [])
             self.known_face_names = data.get('names', [])
-
+            
             # Save in secure format
             self.save_face_encodings()
-
+            
             self.logger.info(f"Successfully converted legacy pickle file to secure format")
             self.logger.info(f"Legacy file backed up as: {backup_file}")
-
+            
         except Exception as e:
             self.logger.error(f"Error converting legacy pickle file: {e}")
             # Restore original file if conversion failed
             if os.path.exists(backup_file):
                 os.rename(backup_file, pickle_file)
-
+    
     def recognize_faces_in_image(self, image_path: str) -> List[Dict]:
         """
         Recognize faces in an image file

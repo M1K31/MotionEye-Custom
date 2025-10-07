@@ -1,0 +1,71 @@
+=== motionEye Lite Pre-Build Tests ===
+Testing system readiness for Mac mini 2014
+Started: Mon Oct  6 14:44:12 EDT 2025
+
+🔍 Test 1: System Requirements
+  CPU: Intel(R) Core(TM) i7-4578U CPU @ 3.00GHz (4 cores)
+  ✅ CPU: Adequate (4 cores >= 2 required)
+  RAM: 16GB
+  ✅ RAM: Adequate (16GB >= 8GB required)
+  macOS: 12.7.6
+  ✅ macOS: Compatible
+
+🔍 Test 2: Build Prerequisites
+  ✅ git: /usr/local/bin/git
+  ✅ make: /usr/bin/make
+  ✅ autoconf: /usr/local/bin/autoconf
+  ✅ automake: /usr/local/bin/automake
+  ✅ libtool: /usr/bin/libtool
+  ✅ pkg-config: /usr/local/bin/pkg-config
+  ✅ Xcode CLI Tools: /Library/Developer/CommandLineTools
+  ✅ Homebrew: Homebrew 4.6.16
+  ✅ All prerequisites satisfied
+
+🔍 Test 3: Current System Performance
+  Current CPU usage: 17.18%
+  ✅ CPU: Good availability for build
+  Memory free: 69%
+  Load average: 1.86
+
+🔍 Test 4: Disk Space Requirements
+  Available space: 452GB
+  Build space needed:
+    Source downloads: ~200MB
+    Build artifacts: ~2-3GB
+    Installation: ~100MB
+    Total estimated: ~3.5GB
+  ✅ Disk space: Adequate (452GB >= 5GB required)
+
+🔍 Test 5: Python Environment
+  Python: Python 3.13.7
+  ✅ motionEye module: Available
+  ✅ meyectl: Functional
+
+🔍 Test 6: Network and Permissions
+  ✅ Internet: Accessible for downloads
+  ⚠️  Permissions: May need sudo for installation
+  ✅ Port 8080: Available
+  ✅ Port 8081: Available
+  ✅ Port 8765: Available
+
+📊 Build Performance Prediction
+  Hardware: 4 cores @ 3.0GHz
+  Estimated build times:
+    FFmpeg: 45-90 minutes
+    libmicrohttpd: 5-10 minutes
+    Motion: 10-20 minutes
+    Total: 60-120 minutes
+
+  Recommendations:
+    • Close unnecessary applications during build
+    • Ensure adequate cooling
+    • Monitor CPU temperature
+    • Build during low-usage periods
+
+=== Test Summary ===
+Completed: Mon Oct  6 14:44:17 EDT 2025
+✅ All tests passed! System ready for motionEye Lite build
+
+🚀 Ready to proceed with:
+    ./motioneye-lite install
+

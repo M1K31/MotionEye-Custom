@@ -15,6 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import logging
+from tornado.web import HTTPError
+from motioneye import database
 from motioneye.handlers.base import BaseHandler
 
 __all__ = ('LoginHandler',)
@@ -27,5 +30,17 @@ class LoginHandler(BaseHandler):
         self.finish_json()
 
     def post(self):
+        # Enforce rate limiting before attempting to log in.
+        username = self.get_argument('_username', None)
+        if username:
+            try:
+                database.check_rate_limit(username)
+            except Exception as e:
+                logging.warning(f"Rate limit exceeded for user '{username}': {e}")
+                raise HTTPError(429, str(e))
+
+        # The actual login logic is handled by BaseHandler.get_current_user,
+        # which is called implicitly by the authentication mechanism.
+        # We just need to finish the request.
         self.set_header('Content-Type', 'text/html')
         self.finish()

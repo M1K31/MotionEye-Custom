@@ -122,6 +122,7 @@
         <div class="settings closed">
             <div class="settings-container">
                 <form autocomplete="new-password">
+                    <input type="hidden" name="_xsrf" value="{{ xsrf_token }}">
                     <!-- Preferences -->
                     <div class="settings-section-title" id="preferencesDiv">
                         <span class="help-mark" title="{{ _("preferoj de uzanto") }}">?</span>
@@ -590,7 +591,7 @@
                         <tr class="settings-item" required="true" depends="webHookStorageEnabled" strip="true">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Reteja URL") }}</span></td>
                             <td class="settings-item-value"><input type="text" class="styled storage camera-config" id="webHookStorageUrlEntry" placeholder="{{ _("ekz. http://example.com/notify/") }}"></td>
-                            <td><span class="help-mark" title="{{ _("URL por transdoni kiam moviĝo estas detektita; la sekvaj specialaj ŝparvojoj estas akceptitaj:%%Y = jaro,%%m = monato,%%d = tago,%%H = horo,%%M = minuto,%%S = sekundo,%%q = kadro numero,%%v = evento numero,%%f = dosiera vojo") }}">?</span></td>
+                            <td><span class="help-mark" title="{{ _("URL por transdoni kiam moviĝo estas detektita; la sekvaj specialaj ŝparvojoj estas akceptitaj:%%%%Y = jaro,%%%%m = monato,%%%%d = tago,%%%%H = horo,%%%%M = minuto,%%%%S = sekundo,%%%%q = kadro numero,%%%%v = evento numero,%%%%f = dosiera vojo") }}">?</span></td>
                         </tr>
                         <tr class="settings-item" depends="webHookStorageEnabled">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Metodo HTTP") }}</span></td>
@@ -615,7 +616,7 @@
                         <tr class="settings-item" required="true" depends="commandStorageEnabled" strip="true">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Ordono") }}</span></td>
                             <td class="settings-item-value"><input type="text" class="styled storage camera-config" id="commandStorageEntry" placeholder="{{ _("ordono…") }}"></td>
-                            <td><span class="help-mark" title="{{ _("Komando por esti plenumita post la kreo de plurmedia dosiero. Pluraj komandoj povas esti apartigitaj per punktoknomo; ne uzu punktoknomo en komandojn; la sekvaj specialaj tokensoj estas akceptitaj: %%Y = jaro, %%m = monato, %%d = tago, %%H = horo, %%M = minuto, %%S = sekundo, %%q = kadra numero , %%v = okaza numero, %%f = dosiera vojo") }}">?</span></td>
+                            <td><span class="help-mark" title="{{ _("Komando por esti plenumita post la kreo de plurmedia dosiero. Pluraj komandoj povas esti apartigitaj per punktoknomo; ne uzu punktoknomo en komandojn; la sekvaj specialaj tokensoj estas akceptitaj: %%%%Y = jaro, %%%%m = monato, %%%%d = tago, %%%%H = horo, %%%%M = minuto, %%%%S = sekundo, %%%%q = kadra numero , %%%%v = okaza numero, %%%%f = dosiera vojo") }}">?</span></td>
                         </tr>
                         {% for config in camera_sections.get('storage', {}).get('configs', []) %}
                             {{config_item(config)}}
@@ -645,7 +646,7 @@
                         <tr class="settings-item" required="true" depends="leftTextType=custom-text" strip="true">
                             <td class="settings-item-label"></td>
                             <td class="settings-item-value"><input type="text" class="styled text-overlay camera-config" id="leftTextEntry" placeholder="{{ _("propra teksto…") }}"></td>
-                            <td><span class="help-mark" title="{{ _("Difinas kutimon maldekstran tekston; la sekvaj specialaj tokensoj estas akceptitaj:%%Y = jaro,%%m = monato,%%d = tago,%%H = horo,%%M = minuto,%%S = sekundo,%%q = kadro numero,%%v = evento numero,%%T = HH:MM:SS, \\n = nova linio") }}">?</span></td>
+                            <td><span class="help-mark" title="{{ _("Difinas kutimon maldekstran tekston; la sekvaj specialaj tokensoj estas akceptitaj:%%%%Y = jaro,%%%%m = monato,%%%%d = tago,%%%%H = horo,%%%%M = minuto,%%%%S = sekundo,%%%%q = kadro numero,%%%%v = evento numero,%%%%T = HH:MM:SS, \\n = nova linio") }}">?</span></td>
                         </tr>
                         <tr class="settings-item">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Dekstra Teksto") }}</span></td>
@@ -662,7 +663,7 @@
                         <tr class="settings-item" required="true" depends="rightTextType=custom-text" strip="true">
                             <td class="settings-item-label"></td>
                             <td class="settings-item-value"><input type="text" class="styled text-overlay camera-config" id="rightTextEntry" placeholder="{{ _("propra teksto…") }}"></td>
-                            <td><span class="help-mark" title="{{ _("Difinas kutimon dekstran tekston; la sekvaj specialaj tokensoj estas akceptitaj:%%Y = jaro,%%m = monato,%%d = tago,%%H = horo,%%M = minuto,%%S = sekundo,%%q = kadro numero,%%v = evento numero,%%T = HH:MM:SS, \\n = nova linio") }}">?</span></td>
+                            <td><span class="help-mark" title="{{ _("Difinas kutimon dekstran tekston; la sekvaj specialaj tokensoj estas akceptitaj:%%%%Y = jaro,%%%%m = monato,%%%%d = tago,%%%%H = horo,%%%%M = minuto,%%%%S = sekundo,%%%%q = kadro numero,%%%%v = evento numero,%%%%T = HH:MM:SS, \\n = nova linio") }}">?</span></td>
                         </tr>
                         <tr class="settings-item" min="1" max="10" snap="1" ticksnum="10" decimals="0">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Teksta Skalo") }}</span></td>
@@ -687,7 +688,7 @@
                             <td class="settings-item-value"><input type="text" class="range styled streaming camera-config" id="streamingFramerateSlider"></td>
                             <td><span class="help-mark" title="{{ _("Fiksas la nombron de kadroj transdonitaj ĉiun sekundon en la viva fluo.") }}">?</span></td>
                         </tr>
-                        <tr class="settings-item" min="0" max="100" snap="0" ticksnum="5" decimals="0" unit="%">
+                        <tr class="settings-item" min="0" max="100" snap="0" ticksnum="5" decimals="0" unit="%%">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Flua Kvalito") }}</span></td>
                             <td class="settings-item-value"><input type="text" class="range styled streaming camera-config" id="streamingQualitySlider"></td>
                             <td><span class="help-mark" title="{{ _("Agordas la vivan fluan kvaliton (pli altaj valoroj produktas pli bonan videokvaliton sed postulas pli da larĝa bando).") }}">?</span></td>
@@ -697,7 +698,7 @@
                             <td class="settings-item-value"><input type="checkbox" class="styled streaming camera-config" id="streamingServerResizeSwitch"></td>
                             <td><span class="help-mark" title="{{ _("Kiam ĉi tio estas enŝaltita, la bildoj estas regrandigitaj antaŭ ol ili estas senditaj al la retumilo (malebligu dum funkciado sur malrapida CPU).") }}">?</span></td>
                         </tr>
-                        <tr class="settings-item" min="0" max="100" snap="0" ticksnum="5" decimals="0" unit="%" depends="streamingServerResize">
+                        <tr class="settings-item" min="0" max="100" snap="0" ticksnum="5" decimals="0" unit="%%" depends="streamingServerResize">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Flua rezolucio") }}</span></td>
                             <td class="settings-item-value"><input type="text" class="range styled streaming camera-config" id="streamingResolutionSlider"></td>
                             <td><span class="help-mark" title="{{ _("la rezolucio donita kiel procento de la rezolucio de la video-aparato (pli altaj valoroj produktas pli bonan videan kvaliton sed postulas pli da larĝa de bando)") }}">?</span></td>
@@ -769,9 +770,9 @@
                         <tr class="settings-item" required="true" strip="true">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Nomo Bildo-Dosiero") }}</span></td>
                             <td class="settings-item-value"><input type="text" class="styled still-images camera-config" id="imageFileNameEntry" placeholder="{{ _("dosiernomo ŝablono…") }}"></td>
-                            <td><span class="help-mark" title="{{ _("Difinas la nomon ŝablonon por bilddosieroj (JPEG); la sekvaj specialaj tokensoj estas akceptitaj:%%Y = jaro,%%m = monato,%%d = tago,%%H = horo,%%M = minuto,%%S = sekundo,%%q = kadro numero,%%v = evento numero, / = subdosierujo.") }}">?</span></td>
+                            <td><span class="help-mark" title="{{ _("Difinas la nomon ŝablonon por bilddosieroj (JPEG); la sekvaj specialaj tokensoj estas akceptitaj:%%%%Y = jaro,%%%%m = monato,%%%%d = tago,%%%%H = horo,%%%%M = minuto,%%%%S = sekundo,%%%%q = kadro numero,%%%%v = evento numero, / = subdosierujo.") }}">?</span></td>
                         </tr>
-                        <tr class="settings-item" min="0" max="100" snap="0" ticksnum="5" decimals="0" unit="%">
+                        <tr class="settings-item" min="0" max="100" snap="0" ticksnum="5" decimals="0" unit="%%">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Bildkvalito") }}</span></td>
                             <td class="settings-item-value"><input type="text" class="range styled still-images camera-config" id="imageQualitySlider"></td>
                             <td><span class="help-mark" title="{{ _("agordas la JPEG-bildkvaliton (pli altaj valoroj produktas pli bonan bildan kvaliton sed postulas pli da stokado)") }}">?</span></td>
@@ -838,7 +839,7 @@
                         <tr class="settings-item" required="true" strip="true">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Filma Dosiernomo") }}</span></td>
                             <td class="settings-item-value"><input type="text" class="styled movies camera-config" id="movieFileNameEntry" placeholder="{{ _("dosiernomo ŝablono…") }}"></td>
-                            <td><span class="help-mark" title="{{ _("Difinas la nomon ŝablonon por por la filmdosieroj; la sekvaj specialaj tokensoj estas akceptitaj:%%Y = jaro,%%m = monato,%%d = tago,%%H = horo,%%M = minuto,%%S = sekundo,%%q = kadro numero,%%v = evento numero, / = subdosierujo.") }}">?</span></td>
+                            <td><span class="help-mark" title="{{ _("Difinas la nomon ŝablonon por por la filmdosieroj; la sekvaj specialaj tokensoj estas akceptitaj:%%%%Y = jaro,%%%%m = monato,%%%%d = tago,%%%%H = horo,%%%%M = minuto,%%%%S = sekundo,%%%%q = kadro numero,%%%%v = evento numero, / = subdosierujo.") }}">?</span></td>
                         </tr>
                         <tr class="settings-item">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Rekta kopia filmeto") }}</span></td>
@@ -891,7 +892,7 @@
                             </td>
                             <td><span class="help-mark" title="{{ _("Agordas la filmdosieron; ne ĉiuj formatoj garantias funkcii en ĉiuj sistemoj; se vi dubas, testu ĉiun formaton kaj elektu tiun, kiu plej bone funkcias per via filmetilo.") }}">?</span></td>
                         </tr>
-                        <tr class="settings-item" min="0" max="100" snap="0" ticksnum="5" decimals="0" unit="%">
+                        <tr class="settings-item" min="0" max="100" snap="0" ticksnum="5" decimals="0" unit="%%">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Filma Kvalito") }}</span></td>
                             <td class="settings-item-value"><input type="text" class="range styled movies camera-config" id="movieQualitySlider"></td>
                             <td><span class="help-mark" title="{{ _("Agordas la MPEG-video-kvaliton (pli altaj valoroj produktas pli bonan videokvaliton sed postulas pli da stokado).") }}">?</span></td>
@@ -943,7 +944,7 @@
                         <span class="minimize"></span>
                     </div>
                     <table class="settings">
-                        <tr class="settings-item" min="0" max="20" snap="0" ticksnum="5" decimals="1" unit="%" depends="!autoThresholdTuning">
+                        <tr class="settings-item" min="0" max="20" snap="0" ticksnum="5" decimals="1" unit="%%" depends="!autoThresholdTuning">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Kadra ŝanĝo sojlo") }}</span></td>
                             <td class="settings-item-value"><input type="text" class="range styled motion-detection camera-config" id="frameChangeThresholdSlider"></td>
                             <td><span class="help-mark" title="{{ _("Indikas la minimuman procenton de la bildo, kiu devas ŝanĝi inter du pluaj kadroj por detekti movadon (pli malgrandaj valoroj donas pli sentivan detekton, sed inklinas al falsaj pozitivoj).") }}">?</span></td>
@@ -963,15 +964,15 @@
                             <td class="settings-item-value"><input type="checkbox" class="styled motion-detection camera-config" id="autoNoiseDetectSwitch"></td>
                             <td><span class="help-mark" title="{{ _("Ebligu tion por aŭtomate ĝustigi la nivelon de bruo.") }}">?</span></td>
                         </tr>
-                        <tr class="settings-item" min="0" max="25" snap="0" ticksnum="6" decimals="0" unit="%" depends="!autoNoiseDetect">
+                        <tr class="settings-item" min="0" max="25" snap="0" ticksnum="6" decimals="0" unit="%%" depends="!autoNoiseDetect">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Bruo-nivelo") }}</span></td>
                             <td class="settings-item-value"><input type="text" class="range styled motion-detection camera-config" id="noiseLevelSlider"></td>
                             <td><span class="help-mark" title="{{ _("Permane agordas la bruan nivelon al fiksita valoro.") }}">?</span></td>
                         </tr>
-                        <tr class="settings-item" min="0" max="100" snap="0" ticksnum="5" decimals="0" unit="%">
+                        <tr class="settings-item" min="0" max="100" snap="0" ticksnum="5" decimals="0" unit="%%">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Detekto de lumaj ŝanĝoj") }}</span></td>
                             <td class="settings-item-value"><input type="text" class="range styled motion-detection camera-config" id="lightSwitchDetectSlider"></td>
-                            <td><span class="help-mark" title="{{ _("Difinas la procenton de la bildo, kiu bezonas ŝanĝi, por ke la evento estu traktata kiel subita luma ŝanĝo anstataŭ moviĝo (0%% malebligas la funkcion).") }}">?</span></td>
+                            <td><span class="help-mark" title="{{ _("Difinas la procenton de la bildo, kiu bezonas ŝanĝi, por ke la evento estu traktata kiel subita luma ŝanĝo anstataŭ moviĝo (0%%%% malebligas la funkcion).") }}">?</span></td>
                         </tr>
                         <tr class="settings-item">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Makula filtrilo") }}</span></td>
@@ -1179,7 +1180,7 @@
                         <tr class="settings-item" required="true" depends="webHookNotificationsEnabled motionDetectionEnabled" strip="true">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Reteja URL") }}</span></td>
                             <td class="settings-item-value"><input type="text" class="styled notifications camera-config" id="webHookNotificationsUrlEntry" placeholder="{{ _("ekz. http://ekzemplo.com/sciigi/") }}"></td>
-                            <td><span class="help-mark" title="{{ _("URL por esti petita kiam moviĝo estas detektita; la sekvaj specialaj ŝparvojoj estas akceptitaj: %%Y = jaro, %%m = monato, %%d = tago, %%H = horo, %%M = minuto, %%S = sekundo, %%q = kadro-numero, %%v = okaza numero") }}">?</span></td>
+                            <td><span class="help-mark" title="{{ _("URL por esti petita kiam moviĝo estas detektita; la sekvaj specialaj ŝparvojoj estas akceptitaj: %%%%Y = jaro, %%%%m = monato, %%%%d = tago, %%%%H = horo, %%%%M = minuto, %%%%S = sekundo, %%%%q = kadro-numero, %%%%v = okaza numero") }}">?</span></td>
                         </tr>
                         <tr class="settings-item" depends="webHookNotificationsEnabled motionDetectionEnabled">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Metodo HTTP") }}</span></td>
@@ -1204,7 +1205,7 @@
                         <tr class="settings-item" required="true" depends="commandNotificationsEnabled motionDetectionEnabled" strip="true">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Komando") }}</span></td>
                             <td class="settings-item-value"><input type="text" class="styled notifications camera-config" id="commandNotificationsEntry" placeholder="{{ _("komando…") }}"></td>
-                            <td><span class="help-mark" title="{{ _("Komando por esti lanĉa kiam moviĝo estas detektita; multnombraj komandoj povas esti apartigitaj per dupunkto; ne uzu punktokomojn per komandoj; la sekvaj specialaj tokensoj estas akceptitaj: %%Y = jaro, %%m = monato, %%d = tago, %%H = horo, %%M = minuto, %%S = sekundo, %%q = kadro-numero, %%v = okaza numero") }}">?</span></td>
+                            <td><span class="help-mark" title="{{ _("Komando por esti lanĉa kiam moviĝo estas detektita; multnombraj komandoj povas esti apartigitaj per dupunkto; ne uzu punktokomojn per komandoj; la sekvaj specialaj tokensoj estas akceptitaj: %%%%Y = jaro, %%%%m = monato, %%%%d = tago, %%%%H = horo, %%%%M = minuto, %%%%S = sekundo, %%%%q = kadro-numero, %%%%v = okaza numero") }}">?</span></td>
                         </tr>
                         <tr class="settings-item" depends="motionDetectionEnabled">
                             <td colspan="100"><div class="settings-item-separator"></div></td>
@@ -1224,7 +1225,7 @@
                         <tr class="settings-item" required="true" depends="webHookEndNotificationsEnabled motionDetectionEnabled" strip="true">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Reteja URL") }}</span></td>
                             <td class="settings-item-value"><input type="text" class="styled notifications camera-config" id="webHookEndNotificationsUrlEntry" placeholder="e.g. http://example.com/notify/"></td>
-                            <td><span class="help-mark" title="{{ _("a single URL to be requested when motion event ends; the following special tokens are accepted: %Y = year, %m = month, %d = day, %H = hour, %M = minute, %S = second, %q = frame number, %v = event number") }}">?</span></td>
+                            <td><span class="help-mark" title="{{ _("a single URL to be requested when motion event ends; the following special tokens are accepted: %%%%Y = year, %%%%m = month, %%%%d = day, %%%%H = hour, %%%%M = minute, %%%%S = second, %%%%q = frame number, %%%%v = event number") }}">?</span></td>
                         </tr>
                         <tr class="settings-item" depends="webHookEndNotificationsEnabled motionDetectionEnabled">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Metodo HTTP") }}</span></td>
@@ -1249,7 +1250,7 @@
                         <tr class="settings-item" required="true" depends="commandEndNotificationsEnabled motionDetectionEnabled" strip="true">
                             <td class="settings-item-label"><span class="settings-item-label">{{ _("Komando") }}</span></td>
                             <td class="settings-item-value"><input type="text" class="styled notifications camera-config" id="commandEndNotificationsEntry" placeholder="{{ _("komando…") }}"></td>
-                            <td><span class="help-mark" title="{{ _("Komando por esti lanĉa kiam moviĝokazaĵo finiĝas; multnombraj komandoj povas esti apartigitaj per dupunkto; ne uzu punktokompojn per komandoj; la sekvaj specialaj tokensoj estas akceptitaj: %%Y = jaro, %%m = monato, %%d = dato, %%H = horo, %%M = minuto, %%S = sekundo, %%q = kadra nombro.") }}">?</span></td>
+                            <td><span class="help-mark" title="{{ _("Komando por esti lanĉa kiam moviĝokazaĵo finiĝas; multnombraj komandoj povas esti apartigitaj per dupunkto; ne uzu punktokompojn per komandoj; la sekvaj specialaj tokensoj estas akceptitaj: %%%%Y = jaro, %%%%m = monato, %%%%d = dato, %%%%H = horo, %%%%M = minuto, %%%%S = sekundo, %%%%q = kadra nombro.") }}">?</span></td>
                         </tr>
                         {% for config in camera_sections.get('notifications', {}).get('configs', []) %}
                             {{config_item(config, "motionDetectionEnabled")}}

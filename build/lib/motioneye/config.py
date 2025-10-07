@@ -16,14 +16,19 @@
 
 import collections
 import datetime
+import functools
 import glob
 import hashlib
 import logging
 import os.path
 import subprocess
+import tarfile
+import time
+import io
+import secrets
 from errno import EEXIST, ENOENT
 from re import match, sub
-from shlex import split
+from shlex import split, quote
 from urllib.parse import urlunparse
 
 from tornado.ioloop import IOLoop
@@ -139,6 +144,60 @@ _USED_MOTION_OPTIONS = {
     'webcontrol_port',
     'width',
 }
+
+
+class ConfigCache:
+    """Cache configuration with TTL"""
+
+    def __init__(self, ttl=30):
+        self.cache = {}
+        self.ttl = ttl
+
+    def get_cached_config(self, camera_id):
+        """Get cached config if still valid"""
+        if camera_id in self.cache:
+            cached_data, timestamp = self.cache[camera_id]
+            if time.time() - timestamp < self.ttl:
+                return cached_data
+        return None
+
+    def set_cached_config(self, camera_id, config):
+        """Cache configuration"""
+        self.cache[camera_id] = (config, time.time())
+
+    def invalidate(self, camera_id=None):
+        """Invalidate cache"""
+        if camera_id:
+            self.cache.pop(camera_id, None)
+        else:
+            self.cache.clear()
+
+    def set_ttl(self, ttl):
+        self.ttl = ttl
+
+
+# Global cache instance
+config_cache = ConfigCache(ttl=30)
+
+
+def cached_camera_config(func):
+    """Decorator for caching camera configuration"""
+    @functools.wraps(func)
+    def wrapper(camera_id, *args, **kwargs):
+        # Check cache first
+        cached = config_cache.get_cached_config(camera_id)
+        if cached is not None:
+            return cached
+
+        # Get fresh config
+        config = func(camera_id, *args, **kwargs)
+
+        # Cache it
+        config_cache.set_cached_config(camera_id, config)
+
+        return config
+
+    return wrapper
 
 
 def text_double(v, data):
@@ -352,6 +411,9 @@ def set_main(main_config):
         main_config.setdefault(n, v)
     _main_config_cache = main_config
 
+    if '@config_cache_ttl' in main_config:
+        config_cache.set_ttl(main_config['@config_cache_ttl'])
+
     main_config = dict(main_config)
     _set_additional_config(main_config)
 
@@ -472,6 +534,7 @@ def get_network_shares():
     return mounts
 
 
+@cached_camera_config
 def get_camera(camera_id, as_lines=False):
     if not as_lines and camera_id in _camera_config_cache:
         return _camera_config_cache[camera_id]
@@ -564,6 +627,7 @@ def get_camera(camera_id, as_lines=False):
 def set_camera(camera_id, camera_config):
     camera_config['@id'] = camera_id
     _camera_config_cache[camera_id] = camera_config
+    config_cache.invalidate(camera_id)
 
     camera_config = dict(camera_config)
 
@@ -755,6 +819,7 @@ def rem_camera(camera_id):
 
     _camera_ids_cache = None
     _camera_config_cache.clear()
+    config_cache.invalidate(camera_id)
 
     try:
         os.remove(camera_config_path)
@@ -1180,6 +1245,7 @@ def motion_camera_ui_to_dict(ui, prev_config=None):
 
         data['@working_schedule_type'] = ui['working_schedule_type']
 
+    # SECURITY FIX: Use shlex.quote for all user-supplied parameters in commands
     # event start
     on_event_start = [f"{meyectl.find_command('relayevent')} start %t"]
     main_config = get_main()
@@ -1189,34 +1255,30 @@ def motion_camera_ui_to_dict(ui, prev_config=None):
     if ui['email_notifications_enabled']:
         emails = sub('\\s', '', ui['email_notifications_addresses'])
 
+        # SECURITY FIX: Properly quote all parameters
         line = (
-            "%(script)s '%(server)s' '%(port)s' '%(account)s' '%(password)s' '%(tls)s' '%(from)s' '%(to)s' "
-            "'motion_start' '%%t' '%%Y-%%m-%%dT%%H:%%M:%%S' '%(timespan)s'"
-            % {
-                'script': meyectl.find_command('sendmail'),
-                'server': ui['email_notifications_smtp_server'],
-                'port': ui['email_notifications_smtp_port'],
-                'account': ui['email_notifications_smtp_account'],
-                'password': ui['email_notifications_smtp_password']
-                .replace(';', '\\;')
-                .replace('%', '%%'),
-                'tls': ui['email_notifications_smtp_tls'],
-                'from': ui['email_notifications_from'],
-                'to': emails,
-                'timespan': ui['email_notifications_picture_time_span'],
-            }
+            f"{quote(meyectl.find_command('sendmail'))} "
+            f"{quote(ui['email_notifications_smtp_server'])} "
+            f"{quote(str(ui['email_notifications_smtp_port']))} "
+            f"{quote(ui['email_notifications_smtp_account'])} "
+            f"{quote(ui['email_notifications_smtp_password'])} "
+            f"{quote(str(ui['email_notifications_smtp_tls']))} "
+            f"{quote(ui['email_notifications_from'])} "
+            f"{quote(emails)} "
+            f"'motion_start' '%t' '%Y-%m-%dT%H:%M:%S' "
+            f"{quote(str(ui['email_notifications_picture_time_span']))}"
         )
 
         on_event_start.append(line)
+        
     if ui['telegram_notifications_enabled']:
+        # SECURITY FIX: Properly quote all parameters
         line = (
-            "%(script)s '%(api)s' '%(chatid)s' '%%t' '%%Y-%%m-%%dT%%H:%%M:%%S' '%(timespan)s'"
-            % {
-                'script': meyectl.find_command('sendtelegram'),
-                'api': ui['telegram_notifications_api'],
-                'chatid': ui['telegram_notifications_chat_id'],
-                'timespan': ui['telegram_notifications_picture_time_span'],
-            }
+            f"{quote(meyectl.find_command('sendtelegram'))} "
+            f"{quote(ui['telegram_notifications_api'])} "
+            f"{quote(ui['telegram_notifications_chat_id'])} "
+            f"'%t' '%Y-%m-%dT%H:%M:%S' "
+            f"{quote(str(ui['telegram_notifications_picture_time_span']))}"
         )
 
         on_event_start.append(line)
@@ -1224,16 +1286,18 @@ def motion_camera_ui_to_dict(ui, prev_config=None):
     if ui['web_hook_notifications_enabled']:
         url = sub('\\s', '+', ui['web_hook_notifications_url'])
 
+        # SECURITY FIX: Quote the URL
         on_event_start.append(
-            "{script} '{method}' '{url}'".format(
-                script=meyectl.find_command('webhook'),
-                method=ui['web_hook_notifications_http_method'],
-                url=url,
-            )
+            f"{quote(meyectl.find_command('webhook'))} "
+            f"{quote(ui['web_hook_notifications_http_method'])} "
+            f"{quote(url)}"
         )
 
     if ui['command_notifications_enabled']:
-        on_event_start += utils.split_semicolon(ui['command_notifications_exec'])
+        commands = utils.split_semicolon(ui['command_notifications_exec'])
+        for command in commands:
+            parts = split(command)
+            on_event_start.append(' '.join([quote(p) for p in parts]))
 
     data['on_event_start'] = '; '.join(on_event_start)
 
@@ -1245,17 +1309,18 @@ def motion_camera_ui_to_dict(ui, prev_config=None):
     if ui['web_hook_end_notifications_enabled']:
         url = sub(r'\s', '+', ui['web_hook_end_notifications_url'])
 
+        # SECURITY FIX: Quote parameters
         on_event_end.append(
-            "%(script)s '%(method)s' '%(url)s'"
-            % {
-                'script': meyectl.find_command('webhook'),
-                'method': ui['web_hook_end_notifications_http_method'],
-                'url': url,
-            }
+            f"{quote(meyectl.find_command('webhook'))} "
+            f"{quote(ui['web_hook_end_notifications_http_method'])} "
+            f"{quote(url)}"
         )
 
     if ui['command_end_notifications_enabled']:
-        on_event_end += utils.split_semicolon(ui['command_end_notifications_exec'])
+        commands = utils.split_semicolon(ui['command_end_notifications_exec'])
+        for command in commands:
+            parts = split(command)
+            on_event_end.append(' '.join([quote(p) for p in parts]))
 
     data['on_event_end'] = '; '.join(on_event_end)
 
@@ -1265,16 +1330,18 @@ def motion_camera_ui_to_dict(ui, prev_config=None):
     if ui['web_hook_storage_enabled']:
         url = sub('\\s', '+', ui['web_hook_storage_url'])
 
+        # SECURITY FIX: Quote parameters
         on_movie_end.append(
-            "{script} '{method}' '{url}'".format(
-                script=meyectl.find_command('webhook'),
-                method=ui['web_hook_storage_http_method'],
-                url=url,
-            )
+            f"{quote(meyectl.find_command('webhook'))} "
+            f"{quote(ui['web_hook_storage_http_method'])} "
+            f"{quote(url)}"
         )
 
     if ui['command_storage_enabled']:
-        on_movie_end += utils.split_semicolon(ui['command_storage_exec'])
+        commands = utils.split_semicolon(ui['command_storage_exec'])
+        for command in commands:
+            parts = split(command)
+            on_movie_end.append(' '.join([quote(p) for p in parts]))
 
     data['on_movie_end'] = '; '.join(on_movie_end)
 
@@ -1289,32 +1356,34 @@ def motion_camera_ui_to_dict(ui, prev_config=None):
     # picture save
     on_picture_save = [f"{meyectl.find_command('relayevent')} picture_save %t %f"]
     if ui.get('opencv_enabled'):
-        # Construct the command with all necessary arguments for the processor script
+        # SECURITY FIX: Quote all parameters in opencv command
         opencv_cmd = (
-            f"python3 {meyectl.find_command('opencv_processor')} %f {settings.CONF_PATH}"
-            f" --camera-id {prev_config.get('@id', '')}"
-            f" --animal-detection {str(ui.get('animal_detection', False)).lower()}"
-            f" --person-detection {str(ui.get('person_detection', False)).lower()}"
-            f" --notify-on-animal {str(ui.get('notify_on_animal_detection', False)).lower()}"
-            f" --known-path \"{ui.get('known_persons_path', '')}\""
-            f" --unknown-path \"{ui.get('unknown_persons_path', '')}\""
-            f" --animal-path \"{ui.get('animal_path', '')}\""
+            f"python3 {quote(meyectl.find_command('opencv_processor'))} %f {quote(settings.CONF_PATH)}"
+            f" --camera-id {quote(str(prev_config.get('@id', '')))}"
+            f" --animal-detection {quote(str(ui.get('animal_detection', False)).lower())}"
+            f" --person-detection {quote(str(ui.get('person_detection', False)).lower())}"
+            f" --notify-on-animal {quote(str(ui.get('notify_on_animal_detection', False)).lower())}"
+            f" --known-path {quote(ui.get('known_persons_path', ''))}"
+            f" --unknown-path {quote(ui.get('unknown_persons_path', ''))}"
+            f" --animal-path {quote(ui.get('animal_path', ''))}"
         )
         on_picture_save.append(opencv_cmd)
 
     if ui['web_hook_storage_enabled']:
         url = sub('\\s', '+', ui['web_hook_storage_url'])
 
+        # SECURITY FIX: Quote parameters
         on_picture_save.append(
-            "{script} '{method}' '{url}'".format(
-                script=meyectl.find_command('webhook'),
-                method=ui['web_hook_storage_http_method'],
-                url=url,
-            )
+            f"{quote(meyectl.find_command('webhook'))} "
+            f"{quote(ui['web_hook_storage_http_method'])} "
+            f"{quote(url)}"
         )
 
     if ui['command_storage_enabled']:
-        on_picture_save += utils.split_semicolon(ui['command_storage_exec'])
+        commands = utils.split_semicolon(ui['command_storage_exec'])
+        for command in commands:
+            parts = split(command)
+            on_picture_save.append(' '.join([quote(p) for p in parts]))
 
     data['on_picture_save'] = '; '.join(on_picture_save)
 
@@ -1978,23 +2047,73 @@ def backup():
 
 
 def restore(content):
+    """
+    SECURITY FIX: Safely restore configuration from tar archive with proper validation
+    """
     logging.info('restoring config from backup file')
 
-    cmd = ['tar', 'zxC', settings.CONF_PATH]
-
     try:
-        p = subprocess.Popen(
-            cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        # SECURITY: Validate tar archive before extraction
+        tar = tarfile.open(fileobj=io.BytesIO(content))
+        
+        # Get absolute path of CONF_PATH for comparison
+        conf_path_abs = os.path.abspath(settings.CONF_PATH)
+        
+        # Validate all members in the archive
+        for member in tar.getmembers():
+            # SECURITY: Block absolute paths
+            if member.name.startswith('/'):
+                logging.error(f'rejected absolute path in backup: {member.name}')
+                tar.close()
+                return {'error': 'Backup contains absolute paths'}
+            
+            # SECURITY: Block parent directory references
+            if '..' in member.name.split(os.sep):
+                logging.error(f'rejected parent directory reference in backup: {member.name}')
+                tar.close()
+                return {'error': 'Backup contains parent directory references'}
+            
+            # SECURITY: Ensure path resolves within CONF_PATH
+            full_path = os.path.join(settings.CONF_PATH, member.name)
+            full_path_abs = os.path.abspath(full_path)
+            
+            if not full_path_abs.startswith(conf_path_abs + os.sep) and full_path_abs != conf_path_abs:
+                logging.error(f'rejected path escape attempt in backup: {member.name}')
+                tar.close()
+                return {'error': f'Backup contains path that escapes config directory: {member.name}'}
+            
+            # SECURITY: Block symlinks
+            if member.issym() or member.islnk():
+                logging.error(f'rejected symlink in backup: {member.name}')
+                tar.close()
+                return {'error': 'Backup contains symbolic links'}
+            
+            # SECURITY: Block device files
+            if member.isdev():
+                logging.error(f'rejected device file in backup: {member.name}')
+                tar.close()
+                return {'error': 'Backup contains device files'}
+            
+            # SECURITY: Validate file size (prevent zip bombs)
+            if member.size > 100 * 1024 * 1024:  # 100 MB limit per file
+                logging.error(f'rejected oversized file in backup: {member.name} ({member.size} bytes)')
+                tar.close()
+                return {'error': 'Backup contains files that are too large'}
+        
+        # All validations passed, proceed with extraction
+        logging.debug(f'backup validation passed, extracting to {settings.CONF_PATH}')
+        
+        # Extract with safe parameters
+        tar.extractall(
+            path=settings.CONF_PATH,
+            members=tar.getmembers(),
+            numeric_owner=False
         )
-        msg = p.communicate(content)[0]
-        if msg:
-            logging.error(f'failed to restore configuration: {msg}')
-            return False
-
+        tar.close()
+        
         logging.debug('configuration restored successfully')
 
         if settings.ENABLE_REBOOT:
-
             def later():
                 PowerControl.reboot()
 
@@ -2006,10 +2125,13 @@ def restore(content):
 
         return {'reboot': settings.ENABLE_REBOOT}
 
+    except tarfile.TarError as e:
+        logging.error(f'failed to restore configuration - invalid tar archive: {e}', exc_info=True)
+        return {'error': 'Invalid backup file format'}
+    
     except Exception as e:
         logging.error(f'failed to restore configuration: {e}', exc_info=True)
-
-        return None
+        return {'error': f'Restore failed: {str(e)}'}
 
 
 def invalidate():
@@ -2023,6 +2145,7 @@ def invalidate():
     _camera_config_cache = {}
     _camera_ids_cache = None
     _additional_structure_cache = {}
+    config_cache.invalidate()
 
 
 def _value_to_python(value):
@@ -2204,7 +2327,21 @@ def _set_default_motion(data):
     data.setdefault('@enabled', True)
 
     data.setdefault('@admin_username', 'admin')
-    data.setdefault('@admin_password', '')
+
+    # Generate random password on first install if not set
+    if '@admin_password' not in data or not data['@admin_password']:
+        temp_password = secrets.token_urlsafe(16)
+        data['@admin_password'] = hashlib.sha1(temp_password.encode('utf-8')).hexdigest()
+
+        # Log the temporary password
+        logging.critical(f"**** TEMPORARY ADMIN PASSWORD: {temp_password} ****")
+        logging.critical("**** CHANGE THIS PASSWORD IMMEDIATELY ****")
+
+        # Force password change on first login
+        data['@force_password_change'] = True
+    else:
+        data.setdefault('@force_password_change', False)
+
     data.setdefault('@normal_username', 'user')
     data.setdefault('@normal_password', '')
     data.setdefault('@lang', 'en')
@@ -2223,6 +2360,8 @@ def _set_default_motion(data):
     data.setdefault('webcontrol_localhost', settings.MOTION_CONTROL_LOCALHOST)
     # the advanced list of parameters will be available
     data.setdefault('webcontrol_parms', 2)
+    data.setdefault('@mjpeg_proxy_buffer_size', 3)
+    data.setdefault('@config_cache_ttl', 30)
 
 
 def _set_default_motion_camera(camera_id, data):

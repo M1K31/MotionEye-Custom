@@ -1,4 +1,4 @@
-#!/home/mikel/Documents/VSProjects/MotionEye-Custom/motioneye_env/bin/python3
+#!/Users/mikelsmart/Downloads/GitHubProjects/MotionEye-Custom/motioneye_env/bin/python
 import sys
 from face_recognition.face_recognition_cli import main
 if __name__ == '__main__':

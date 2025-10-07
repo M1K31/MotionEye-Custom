@@ -29,6 +29,7 @@ from motioneye import (
     meyectl,
     motionctl,
     remote,
+    secure_config,
     settings,
     tasks,
     template,
@@ -45,14 +46,15 @@ else:
     from motioneye.controls import macoscamctl as camctl
 from motioneye.controls.powerctl import PowerControl
 from motioneye.handlers.base import BaseHandler
-from motioneye.utils.mjpeg import test_mjpeg_url
-from motioneye.utils.rtmp import test_rtmp_url
+from motioneye.utils.mjpeg import check_mjpeg_url
+from motioneye.utils.rtmp import check_rtmp_url
 from motioneye.utils.rtsp import test_rtsp_url
 
 __all__ = ('ConfigHandler',)
 
 
 class ConfigHandler(BaseHandler):
+    @BaseHandler.auth(admin=True)
     async def get(self, camera_id=None, op=None):
         config.invalidate_monitor_commands()
 
@@ -76,6 +78,7 @@ class ConfigHandler(BaseHandler):
         else:
             raise HTTPError(400, 'unknown operation')
 
+    @BaseHandler.auth(admin=True)
     async def post(self, camera_id=None, op=None):
         if camera_id is not None:
             camera_id = int(camera_id)
@@ -100,7 +103,6 @@ class ConfigHandler(BaseHandler):
         else:
             raise HTTPError(400, 'unknown operation')
 
-    @BaseHandler.auth(admin=True)
     async def get_config(self, camera_id):
         if camera_id:
             logging.debug(f'getting config for camera {camera_id}')
@@ -142,7 +144,6 @@ class ConfigHandler(BaseHandler):
             ui_config = config.main_dict_to_ui(config.get_main())
             return self.finish_json(ui_config)
 
-    @BaseHandler.auth(admin=True)
     async def set_config(self, camera_id):
         try:
             ui_config = json.loads(self.request.body)
@@ -417,7 +418,6 @@ class ConfigHandler(BaseHandler):
 
         return self.check_finished(cameras, length)
 
-    @BaseHandler.auth()
     async def list(self):
         logging.debug('listing cameras')
 
@@ -431,7 +431,7 @@ class ConfigHandler(BaseHandler):
             scheme = self.get_argument('scheme', 'http')
 
             if scheme in ['http', 'https', 'mjpeg']:
-                resp = await test_mjpeg_url(
+                resp = await check_mjpeg_url(
                     self.get_all_arguments(), auth_modes=['basic'], allow_jpeg=True
                 )
                 return self._handle_list_cameras_response(resp)
@@ -441,14 +441,14 @@ class ConfigHandler(BaseHandler):
                 return self._handle_list_cameras_response(resp)
 
             elif scheme == 'rtmp':
-                resp = test_rtmp_url(self.get_all_arguments())
+                resp = check_rtmp_url(self.get_all_arguments())
                 return self._handle_list_cameras_response(resp)
 
             else:
                 return self.finish_json_with_error(f'protocol {scheme} not supported')
 
         elif proto == 'mjpeg':
-            resp = await test_mjpeg_url(
+            resp = await check_mjpeg_url(
                 self.get_all_arguments(),
                 auth_modes=['basic', 'digest'],
                 allow_jpeg=False,
@@ -533,7 +533,6 @@ class ConfigHandler(BaseHandler):
 
             return self.finish_json({'cameras': cameras})
 
-    @BaseHandler.auth(admin=True)
     async def add_camera(self):
         logging.debug('adding new camera')
 
@@ -578,7 +577,6 @@ class ConfigHandler(BaseHandler):
 
             return self.finish_json(ui_config)
 
-    @BaseHandler.auth(admin=True)
     def rem_camera(self, camera_id):
         logging.debug(f'removing camera {camera_id}')
 
@@ -591,33 +589,71 @@ class ConfigHandler(BaseHandler):
 
         return self.finish_json()
 
-    @BaseHandler.auth(admin=True)
     def backup(self):
-        content = config.backup()
+        logging.debug('creating secure configuration backup')
+        all_configs = {'main': config.get_main()}
+        all_configs['cameras'] = {
+            camera_id: config.get_camera(camera_id) for camera_id in config.get_camera_ids()
+        }
 
-        if not content:
-            raise Exception('failed to create backup file')
+        try:
+            content = secure_config.create_backup(all_configs)
+        except Exception as e:
+            logging.error(f'Failed to create secure backup: {e}')
+            raise HTTPError(500, 'Failed to create backup file')
 
-        filename = 'motioneye-config.tar.gz'
-        self.set_header('Content-Type', 'application/x-compressed')
-        self.set_header('Content-Disposition', 'attachment; filename=' + filename + ';')
+        filename = 'motioneye_backup.json'
+        self.set_header('Content-Type', 'application/json')
+        self.set_header('Content-Disposition', f'attachment; filename={filename}')
 
         return self.finish(content)
 
-    @BaseHandler.auth(admin=True)
     def restore(self):
+        logging.debug('restoring secure configuration backup')
         try:
             content = self.request.files['files'][0]['body']
-
         except KeyError:
             raise HTTPError(400, 'file attachment required')
 
-        result = config.restore(content)
-        if result:
-            return self.finish_json({'ok': True, 'reboot': result['reboot']})
+        try:
+            config_data = secure_config.restore_backup(content)
+        except ValueError as e:
+            logging.error(f"Failed to restore backup: {e}")
+            raise HTTPError(400, str(e))
 
-        else:
-            return self.finish_json({'ok': False})
+        try:
+            # Restore main config first
+            if 'main' in config_data:
+                main_conf = config.get_main()
+                main_conf.update(config_data['main'])
+                config.set_main(main_conf)
+
+            # Restore camera configs
+            if 'cameras' in config_data:
+                existing_ids = set(config.get_camera_ids())
+                restored_ids = set(int(k) for k in config_data['cameras'].keys())
+
+                # Add/update cameras from backup
+                for camera_id, camera_config in config_data['cameras'].items():
+                    cam_id = int(camera_id)
+                    existing_cam_conf = config.get_camera(cam_id) if cam_id in existing_ids else {}
+                    existing_cam_conf.update(camera_config)
+                    config.set_camera(cam_id, existing_cam_conf)
+
+                # Remove cameras that were not in the backup
+                for camera_id in existing_ids - restored_ids:
+                    config.rem_camera(camera_id)
+
+            config.invalidate()
+
+            # Restart motion to apply all changes
+            motionctl.stop()
+            motionctl.start()
+
+            return self.finish_json({'ok': True, 'reboot': False})
+        except Exception as e:
+            logging.error(f"Error applying restored configuration: {e}")
+            raise HTTPError(500, 'Error applying restored configuration')
 
     @classmethod
     def _on_test_result(cls, result):
@@ -637,7 +673,6 @@ class ConfigHandler(BaseHandler):
             logging.warning(f'accessing {service_name} failed: {result}')
             return request_handler.finish_json({'error': result})
 
-    @BaseHandler.auth(admin=True)
     async def test(self, camera_id):
         what = self.get_argument('what')
         data = self.get_all_arguments()
@@ -797,7 +832,6 @@ class ConfigHandler(BaseHandler):
         else:
             raise HTTPError(400, 'cannot test features on this type of camera')
 
-    @BaseHandler.auth(admin=True)
     def authorize(self, camera_id):
         service_name = self.get_argument('service')
         if not service_name:

@@ -26,10 +26,10 @@ from motioneye import settings
 from motioneye.utils import GetCamerasResponse, cast_future, pretty_http_error
 from motioneye.utils.http import MjpegUrl
 
-__all__ = ('test_mjpeg_url',)
+__all__ = ('check_mjpeg_url',)
 
 
-def test_mjpeg_url(
+def check_mjpeg_url(
     data: dict, auth_modes: List[str], allow_jpeg: bool
 ) -> 'Future[GetCamerasResponse]':
     url_obj = MjpegUrl.from_dict(data)
