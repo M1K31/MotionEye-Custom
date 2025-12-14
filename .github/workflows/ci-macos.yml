@@ -33,7 +33,13 @@ jobs:
           brew update || true
           brew install cmake pkg-config || true
           brew install openblas libjpeg libpng libtiff || true
-          brew install libomp boost || true
+          brew install libomp boost curl openssl || true
+      - name: Set pycurl build environment
+        run: |
+          echo "PYCURL_SSL_LIBRARY=openssl" >> $GITHUB_ENV
+          echo "LDFLAGS=-L$(brew --prefix openssl)/lib" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I$(brew --prefix openssl)/include" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$(brew --prefix openssl)/lib/pkgconfig:$(brew --prefix curl)/lib/pkgconfig" >> $GITHUB_ENV
       - name: Create venv and install (use wheelhouse if available)
         run: |
           if [ -d .venv ]; then
