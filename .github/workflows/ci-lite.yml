@@ -7,14 +7,12 @@ on:
       - 'build/build_motion_lite_macos.sh'
       - 'test_motioneye_lite.py'
       - 'docs/MOTIONEYE_LITE.md'
-      - 'docs/PERFORMANCE_ANALYSIS.md'
   pull_request:
     branches: [ main ]
     paths:
       - 'build/build_motion_lite_macos.sh'
       - 'test_motioneye_lite.py'
       - 'docs/MOTIONEYE_LITE.md'
-      - 'docs/PERFORMANCE_ANALYSIS.md'
 
 jobs:
   test-lite:
@@ -57,12 +55,8 @@ jobs:
                   self.assertTrue(os.access(script, os.X_OK), 'Build script not executable')
               
               def test_documentation_exists(self):
-                  docs = [
-                      Path('docs/MOTIONEYE_LITE.md'),
-                      Path('docs/PERFORMANCE_ANALYSIS.md')
-                  ]
-                  for doc in docs:
-                      self.assertTrue(doc.exists(), f'{doc} missing')
+                  doc = Path('docs/MOTIONEYE_LITE.md')
+                  self.assertTrue(doc.exists(), f'{doc} missing')
           
           if __name__ == '__main__':
               unittest.main()

@@ -53,7 +53,7 @@ jobs:
       - name: Run tests
         run: |
           source .venv/bin/activate
-          # Run core tests only in CI - Lite tests require macOS-specific Lite installation
-          python -m pytest -q test_imports.py test_integration.py
+          # Run unit tests from tests/ directory
+          python -m pytest tests/ -v --tb=short
         env:
           CI: true
