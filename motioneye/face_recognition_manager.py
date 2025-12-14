@@ -10,6 +10,7 @@ import os
 import cv2
 import numpy as np
 import logging
+import threading
 from typing import Dict, List, Optional
 import json
 import base64
@@ -27,6 +28,9 @@ except ImportError:
 class FaceRecognitionManager:
     """
     Manages face recognition functionality for MotionEye
+    
+    Thread-safety: Uses a read-write lock pattern to allow concurrent 
+    recognition while preventing race conditions during training.
     """
     
     def __init__(self, config_path: str = "/etc/motioneye/faces_config.json"):
@@ -37,6 +41,10 @@ class FaceRecognitionManager:
         self.faces_folder = self.config.get('faces_folder', '/var/lib/motioneye/faces')
         # SECURITY FIX: Changed from .pkl to .json
         self.encodings_file = os.path.join(self.faces_folder, 'face_encodings.json')
+        
+        # Thread safety: Lock for protecting encoding data during training
+        self._lock = threading.RLock()
+        self._training_in_progress = False
         
         # Setup logging
         self.logger = logging.getLogger(__name__)
@@ -122,14 +130,28 @@ class FaceRecognitionManager:
         return faces_data
     
     def train_face_recognition(self) -> bool:
-        """Train face recognition model with images from faces folder"""
+        """
+        Train face recognition model with images from faces folder.
+        
+        Thread-safe: Acquires exclusive lock during training to prevent
+        race conditions with concurrent recognition operations.
+        """
         if not FACE_RECOGNITION_AVAILABLE:
             self.logger.error("Cannot train: face_recognition library not available")
             return False
         
+        with self._lock:
+            if self._training_in_progress:
+                self.logger.warning("Training already in progress, skipping")
+                return False
+            
+            self._training_in_progress = True
+        
         try:
-            self.known_face_encodings = []
-            self.known_face_names = []
+            # Build new encodings in temporary variables to avoid
+            # clearing the existing data until we have new data ready
+            new_encodings = []
+            new_names = []
             
             faces_data = self.scan_faces_folder()
             
@@ -155,8 +177,8 @@ class FaceRecognitionManager:
                         
                         if encodings:
                             for encoding in encodings:
-                                self.known_face_encodings.append(encoding)
-                                self.known_face_names.append(person_name)
+                                new_encodings.append(encoding)
+                                new_names.append(person_name)
                                 total_processed += 1
                             
                             self.logger.info(f"Found {len(encodings)} face(s) in {os.path.basename(image_path)}")
@@ -166,8 +188,12 @@ class FaceRecognitionManager:
                     except Exception as e:
                         self.logger.error(f"Error processing {image_path}: {e}")
             
-            # Save encodings to file
+            # Atomically update the encodings only after successful processing
             if total_processed > 0:
+                with self._lock:
+                    self.known_face_encodings = new_encodings
+                    self.known_face_names = new_names
+                
                 self.save_face_encodings()
                 self.logger.info(f"Training completed: {total_processed} face encodings from {len(faces_data)} people")
                 return True
@@ -178,37 +204,63 @@ class FaceRecognitionManager:
         except Exception as e:
             self.logger.error(f"Error during training: {e}")
             return False
+        finally:
+            with self._lock:
+                self._training_in_progress = False
     
     def save_face_encodings(self):
-        """Save face encodings to JSON file (SECURE - no pickle)"""
+        """
+        Save face encodings to JSON file (SECURE - no pickle).
+        
+        Thread-safe: Uses atomic write pattern to prevent partial reads.
+        """
         try:
             # Convert numpy arrays to base64 strings for JSON serialization
-            serializable_encodings = []
-            for encoding in self.known_face_encodings:
-                # Convert numpy array to base64 string
-                encoding_b64 = base64.b64encode(encoding.tobytes()).decode('utf-8')
-                serializable_encodings.append(encoding_b64)
+            with self._lock:
+                serializable_encodings = []
+                last_encoding = None
+                for encoding in self.known_face_encodings:
+                    # Convert numpy array to base64 string
+                    encoding_b64 = base64.b64encode(encoding.tobytes()).decode('utf-8')
+                    serializable_encodings.append(encoding_b64)
+                    last_encoding = encoding
+                
+                data = {
+                    'encodings': serializable_encodings,
+                    'names': list(self.known_face_names),  # Copy the list
+                    'config': dict(self.config),  # Copy the config
+                    'version': '2.0',
+                    'format': 'secure_json',
+                    'encoding_shape': last_encoding.shape if last_encoding is not None else None,
+                    'encoding_dtype': str(last_encoding.dtype) if last_encoding is not None else None
+                }
             
-            data = {
-                'encodings': serializable_encodings,
-                'names': self.known_face_names,
-                'config': self.config,
-                'version': '2.0',
-                'format': 'secure_json',
-                'encoding_shape': encoding.shape if self.known_face_encodings else None,
-                'encoding_dtype': str(encoding.dtype) if self.known_face_encodings else None
-            }
-            
-            with open(self.encodings_file, 'w') as f:
+            # Atomic write: write to temp file, then rename
+            temp_file = self.encodings_file + '.tmp'
+            with open(temp_file, 'w') as f:
                 json.dump(data, f, indent=2)
+            
+            # Atomic rename (POSIX guarantees this is atomic)
+            os.replace(temp_file, self.encodings_file)
                 
             self.logger.info(f"Face encodings saved securely to {self.encodings_file}")
             
         except Exception as e:
             self.logger.error(f"Error saving encodings: {e}")
+            # Clean up temp file if it exists
+            try:
+                temp_file = self.encodings_file + '.tmp'
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+            except OSError:
+                pass
     
     def load_face_encodings(self):
-        """Load face encodings from JSON file (SECURE - no pickle)"""
+        """
+        Load face encodings from JSON file (SECURE - no pickle).
+        
+        Thread-safe: Acquires lock before updating internal state.
+        """
         try:
             if os.path.exists(self.encodings_file):
                 with open(self.encodings_file, 'r') as f:
@@ -217,12 +269,13 @@ class FaceRecognitionManager:
                 # Validate data structure
                 if not isinstance(data, dict) or 'encodings' not in data:
                     self.logger.warning("Invalid face encodings file format")
-                    self.known_face_encodings = []
-                    self.known_face_names = []
+                    with self._lock:
+                        self.known_face_encodings = []
+                        self.known_face_names = []
                     return
                 
-                # Convert base64 strings back to numpy arrays
-                self.known_face_encodings = []
+                # Convert base64 strings back to numpy arrays in temp variables
+                new_encodings = []
                 encoding_shape = data.get('encoding_shape', (128,))  # Default shape
                 encoding_dtype = data.get('encoding_dtype', 'float64')  # Default dtype
                 
@@ -236,12 +289,15 @@ class FaceRecognitionManager:
                         if encoding_shape:
                             encoding_array = encoding_array.reshape(encoding_shape)
                         
-                        self.known_face_encodings.append(encoding_array)
+                        new_encodings.append(encoding_array)
                     except Exception as e:
                         self.logger.error(f"Error decoding face encoding: {e}")
                         continue
                 
-                self.known_face_names = data.get('names', [])
+                # Atomically update internal state
+                with self._lock:
+                    self.known_face_encodings = new_encodings
+                    self.known_face_names = data.get('names', [])
                 
                 self.logger.info(f"Loaded {len(self.known_face_encodings)} face encodings securely")
                 
@@ -256,12 +312,14 @@ class FaceRecognitionManager:
                 
         except json.JSONDecodeError as e:
             self.logger.error(f"Error parsing face encodings file: {e}")
-            self.known_face_encodings = []
-            self.known_face_names = []
+            with self._lock:
+                self.known_face_encodings = []
+                self.known_face_names = []
         except Exception as e:
             self.logger.error(f"Error loading encodings: {e}")
-            self.known_face_encodings = []
-            self.known_face_names = []
+            with self._lock:
+                self.known_face_encodings = []
+                self.known_face_names = []
     
     def _convert_legacy_pickle_file(self, pickle_file: str):
         """Convert legacy pickle file to secure JSON format"""
@@ -333,6 +391,9 @@ class FaceRecognitionManager:
         """
         Recognize faces in a video frame
         
+        Thread-safe: Takes a snapshot of known encodings under lock
+        to prevent race conditions with training.
+        
         Args:
             frame: OpenCV image frame (BGR format)
             
@@ -345,8 +406,13 @@ class FaceRecognitionManager:
         if not self.config.get('enable_recognition', True):
             return []
         
-        if not self.known_face_encodings:
-            return []
+        # Take a snapshot of current encodings under lock
+        with self._lock:
+            if not self.known_face_encodings:
+                return []
+            # Copy references - numpy arrays are immutable during recognition
+            current_encodings = list(self.known_face_encodings)
+            current_names = list(self.known_face_names)
         
         try:
             # Resize frame for faster processing
@@ -378,9 +444,9 @@ class FaceRecognitionManager:
             min_confidence = self.config.get('min_confidence', 0.6)
             
             for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
-                # Compare with known faces
+                # Compare with known faces (using snapshot, not instance vars)
                 matches = face_recognition.compare_faces(
-                    self.known_face_encodings,
+                    current_encodings,
                     face_encoding,
                     tolerance=self.config.get('max_face_distance', 0.6)
                 )
@@ -389,9 +455,9 @@ class FaceRecognitionManager:
                 confidence = 0.0
                 
                 # Find best match
-                if self.known_face_encodings:
+                if current_encodings:
                     face_distances = face_recognition.face_distance(
-                        self.known_face_encodings,
+                        current_encodings,
                         face_encoding
                     )
                     
@@ -402,7 +468,7 @@ class FaceRecognitionManager:
                         
                         # Only accept if confidence is above threshold
                         if confidence >= min_confidence:
-                            name = self.known_face_names[best_match_index]
+                            name = current_names[best_match_index]
                 
                 # Scale coordinates back to original frame size if resized
                 if width > resize_width:
@@ -474,15 +540,20 @@ class FaceRecognitionManager:
             return None
     
     def get_status(self) -> Dict:
-        """Get current face recognition status"""
+        """Get current face recognition status (thread-safe)"""
         faces_data = self.scan_faces_folder()
+        
+        with self._lock:
+            total_encodings = len(self.known_face_encodings)
+            training_in_progress = self._training_in_progress
         
         return {
             'available': FACE_RECOGNITION_AVAILABLE,
             'enabled': self.config.get('enable_recognition', True),
             'faces_folder': self.faces_folder,
             'known_people': list(faces_data.keys()),
-            'total_encodings': len(self.known_face_encodings),
+            'total_encodings': total_encodings,
+            'training_in_progress': training_in_progress,
             'detection_method': self.config.get('detection_method', 'hog'),
             'recognition_threshold': self.config.get('max_face_distance', 0.6),
             'min_confidence': self.config.get('min_confidence', 0.6),
@@ -495,19 +566,27 @@ class FaceRecognitionManager:
         return FACE_RECOGNITION_AVAILABLE and self.config.get('enable_recognition', True)
 
 
-# Global instance for MotionEye integration
+# Global instance for MotionEye integration (thread-safe singleton)
 _face_manager_instance = None
+_face_manager_lock = threading.Lock()
 
 def get_face_manager() -> Optional[FaceRecognitionManager]:
-    """Get or create the global face recognition manager instance"""
+    """
+    Get or create the global face recognition manager instance.
+    
+    Thread-safe: Uses double-checked locking pattern.
+    """
     global _face_manager_instance
     
     if _face_manager_instance is None:
-        try:
-            _face_manager_instance = FaceRecognitionManager()
-        except Exception as e:
-            logging.error(f"Failed to initialize face recognition manager: {e}")
-            return None
+        with _face_manager_lock:
+            # Double-check inside lock
+            if _face_manager_instance is None:
+                try:
+                    _face_manager_instance = FaceRecognitionManager()
+                except Exception as e:
+                    logging.error(f"Failed to initialize face recognition manager: {e}")
+                    return None
     
     return _face_manager_instance
 

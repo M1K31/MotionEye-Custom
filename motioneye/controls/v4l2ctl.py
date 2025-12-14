@@ -231,7 +231,7 @@ def device_present(device):
     try:
         st = os.stat(device)
         return stat.S_ISCHR(st.st_mode)
-    except:
+    except OSError:
         return False
 
 def find_persistent_device(device):

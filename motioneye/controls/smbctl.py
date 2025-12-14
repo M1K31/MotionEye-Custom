@@ -199,7 +199,7 @@ def test_share(server, share, smb_ver, username, password, root_directory):
     try:
         os.makedirs(path)
 
-    except:
+    except OSError:
         raise Exception('cannot create root directory')
 
     finally:
@@ -257,7 +257,7 @@ def _mount(server, share, smb_ver, username, password):
         os.rmdir(path)
         logging.debug('directory at "%s" is writable' % mount_point)
 
-    except:
+    except OSError:
         logging.error('directory at "%s" is not writable' % mount_point)
 
         return None

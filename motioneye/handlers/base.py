@@ -47,7 +47,8 @@ class BaseHandler(RequestHandler):
         Perform cleanup operations to prevent memory leaks.
         This is called when the request is finished or the connection is closed.
         """
-        if getattr(self, '_cleanup_registered', True):
+        # Fixed: Changed default from True to False so cleanup actually runs
+        if getattr(self, '_cleanup_registered', False):
             return
 
         self._cleanup_registered = True

@@ -9,8 +9,19 @@ import logging
 from motioneye.handlers.base import BaseHandler
 from motioneye import settings
 
-# This should be consistent with opencv_processor.py
+# Try to import face recognition manager, handle gracefully if dependencies are missing
+try:
+    from motioneye.face_recognition_manager import get_face_manager
+    FACE_MANAGER_AVAILABLE = True
+except ImportError:
+    FACE_MANAGER_AVAILABLE = False
+    get_face_manager = None
+    logging.debug("face_recognition_manager not available (missing dependencies)")
+
+# This should be consistent with face_recognition_manager.py
+# Use the same faces folder as the manager
 FACES_DIR = os.path.join(settings.CONF_PATH, 'faces')
+# DEPRECATED: Use face_recognition_manager.py's JSON format instead
 ENCODINGS_CACHE_PATH = os.path.join(FACES_DIR, 'known_faces.pkl')
 
 
@@ -142,13 +153,131 @@ class FacesHandler(BaseHandler):
             return self.finish_json({'error': 'Failed to delete file.'})
 
     def _clear_cache(self):
-        """Deletes the encodings cache to force a refresh."""
+        """
+        Clears the encodings cache and triggers face recognition retraining.
+        
+        This ensures the face_recognition_manager stays in sync with
+        the faces stored on disk.
+        """
+        # Clear legacy pickle cache if it exists
         if os.path.exists(ENCODINGS_CACHE_PATH):
             try:
                 os.remove(ENCODINGS_CACHE_PATH)
-                logging.info("Cleared face encodings cache.")
+                logging.info("Cleared legacy face encodings cache.")
             except OSError as e:
-                logging.error(f"Failed to clear face encodings cache: {e}")
+                logging.error(f"Failed to clear legacy face encodings cache: {e}")
+        
+        # Trigger retraining in the face recognition manager if available
+        if not FACE_MANAGER_AVAILABLE or get_face_manager is None:
+            return
+        
+        try:
+            manager = get_face_manager()
+            if manager and manager.is_available():
+                # Update the manager's faces folder to match this handler
+                manager.faces_folder = FACES_DIR
+                manager.encodings_file = os.path.join(FACES_DIR, 'face_encodings.json')
+                
+                # Trigger retraining in background (non-blocking for web request)
+                import threading
+                def retrain():
+                    try:
+                        manager.train_face_recognition()
+                    except Exception as e:
+                        logging.error(f"Background face recognition training failed: {e}")
+                
+                thread = threading.Thread(target=retrain, daemon=True)
+                thread.start()
+                logging.info("Triggered face recognition retraining.")
+        except Exception as e:
+            logging.error(f"Failed to trigger face recognition retraining: {e}")
+
+
+class FacesTrainHandler(BaseHandler):
+    """Handler for triggering face recognition training"""
+    
+    @BaseHandler.auth(admin=True)
+    def post(self):
+        """Trigger face recognition model training"""
+        if not FACE_MANAGER_AVAILABLE or get_face_manager is None:
+            self.set_status(503)
+            return self.finish_json({
+                'error': 'Face recognition dependencies not installed',
+                'success': False
+            })
+        
+        try:
+            manager = get_face_manager()
+            if not manager:
+                self.set_status(503)
+                return self.finish_json({
+                    'error': 'Face recognition manager not available',
+                    'success': False
+                })
+            
+            if not manager.is_available():
+                self.set_status(503)
+                return self.finish_json({
+                    'error': 'Face recognition library not installed or disabled',
+                    'success': False
+                })
+            
+            # Check if training is already in progress
+            status = manager.get_status()
+            if status.get('training_in_progress', False):
+                self.set_status(409)
+                return self.finish_json({
+                    'error': 'Training already in progress',
+                    'success': False
+                })
+            
+            # Trigger training
+            success = manager.train_face_recognition()
+            
+            if success:
+                return self.finish_json({
+                    'success': True,
+                    'message': 'Face recognition training completed',
+                    'total_encodings': manager.get_status()['total_encodings']
+                })
+            else:
+                self.set_status(400)
+                return self.finish_json({
+                    'success': False,
+                    'error': 'Training failed - check logs for details'
+                })
+                
+        except Exception as e:
+            logging.error(f"Error during face training: {e}")
+            self.set_status(500)
+            return self.finish_json({
+                'error': str(e),
+                'success': False
+            })
+    
+    @BaseHandler.auth(admin=True)
+    def get(self):
+        """Get face recognition training status"""
+        if not FACE_MANAGER_AVAILABLE or get_face_manager is None:
+            return self.finish_json({
+                'available': False,
+                'error': 'Face recognition dependencies not installed'
+            })
+        
+        try:
+            manager = get_face_manager()
+            if not manager:
+                return self.finish_json({
+                    'available': False,
+                    'error': 'Face recognition manager not available'
+                })
+            
+            return self.finish_json(manager.get_status())
+            
+        except Exception as e:
+            logging.error(f"Error getting face recognition status: {e}")
+            self.set_status(500)
+            return self.finish_json({'error': str(e)})
 
 
 class FacesPageHandler(BaseHandler):

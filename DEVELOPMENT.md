@@ -7,7 +7,7 @@ This guide helps developers set up a local development environment for MotionEye
 ### Prerequisites
 
 #### All Platforms
-- Python 3.8+ (3.11 recommended for best compatibility)
+- Python 3.9+ (3.11 recommended for best compatibility)
 - Git
 - C++ compiler toolchain
 

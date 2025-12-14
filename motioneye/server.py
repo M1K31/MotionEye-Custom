@@ -28,7 +28,6 @@ from tornado.ioloop import IOLoop
 from tornado.web import Application
 
 from motioneye import settings, template, homeassistant, config, utils
-import sys
 
 from motioneye.handlers.action import ActionHandler
 from motioneye.handlers.base import ManifestHandler, NotFoundHandler
@@ -50,7 +49,7 @@ from motioneye.handlers.prefs import PrefsHandler
 from motioneye.handlers.relay_event import RelayEventHandler
 from motioneye.handlers.update import UpdateHandler
 from motioneye.handlers.version import VersionHandler
-from motioneye.handlers.faces import FacesHandler, FacesPageHandler
+from motioneye.handlers.faces import FacesHandler, FacesPageHandler, FacesTrainHandler
 
 _PID_FILE = 'motioneye.pid'
 _CURRENT_PICTURE_REGEX = re.compile(r'^/picture/\d+/current')
@@ -87,12 +86,13 @@ class Daemon:
             # redirect standard file descriptors
         sys.stdout.flush()
         sys.stderr.flush()
-        si = open('/dev/null')
-        so = open('/dev/null', 'a+')
-        se = open('/dev/null', 'a+')
-        os.dup2(si.fileno(), sys.stdin.fileno())
-        os.dup2(so.fileno(), sys.stdout.fileno())
-        os.dup2(se.fileno(), sys.stderr.fileno())
+        # Use context managers properly and close file handles
+        with open('/dev/null', 'r') as si:
+            os.dup2(si.fileno(), sys.stdin.fileno())
+        with open('/dev/null', 'a+') as so:
+            os.dup2(so.fileno(), sys.stdout.fileno())
+        with open('/dev/null', 'a+') as se:
+            os.dup2(se.fileno(), sys.stderr.fileno())
 
         # pid file
         atexit.register(self.del_pid)
@@ -103,7 +103,7 @@ class Daemon:
         try:
             os.remove(self.pid_file)
 
-        except:
+        except OSError:
             sys.stderr.write('failed to remove pid file.\n')
 
     def running(self):
@@ -111,14 +111,14 @@ class Daemon:
             with open(self.pid_file) as f:
                 pid = int(f.read().strip())
 
-        except:
+        except (OSError, ValueError):
             return None
 
         try:
             os.kill(pid, 0)
             return pid
 
-        except:
+        except OSError:
             return None
 
     def start(self):
@@ -162,7 +162,7 @@ class Daemon:
             try:
                 os.kill(pid, signal.SIGKILL)
 
-            except:
+            except OSError:
                 sys.stderr.write('failed to kill...\n')
 
 
@@ -231,6 +231,7 @@ handler_mapping = [
     (r'^/power/(?P<op>shutdown|reboot)/?$', PowerHandler),
     (r'^/version/?$', VersionHandler),
     (r'^/faces/?$', FacesHandler),
+    (r'^/faces/train/?$', FacesTrainHandler),
     (r'^/faces/(?P<filename>[^/]+)/?$', FacesHandler),
     (r'^/faces.html$', FacesPageHandler),
     (r'^/login/?$', LoginHandler),

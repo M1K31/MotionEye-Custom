@@ -44,6 +44,10 @@ RUN case "$(dpkg --print-architecture)" in \
 USER motion:motion
 WORKDIR /app
 
+# Health check to monitor container status
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8765/ || exit 1
+
 # R/W needed for motionEye to update configurations
 VOLUME /etc/motioneye
 

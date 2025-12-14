@@ -53,7 +53,7 @@ All Python components of motionEye work perfectly on macOS, including:
 - OpenCV analysis and facial recognition features
 - Database operations and media file management
 - API endpoints and webhook functionality
-- Complete test suite (12 tests pass, 1 skipped)
+- Complete test suite (11 tests pass, 1 skipped)
 
 ### ⚠️ **Motion Daemon Compatibility**
 

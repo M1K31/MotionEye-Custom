@@ -104,7 +104,7 @@ class MoviePlaybackHandler(StaticFileHandler, BaseHandler):
                 f = os.path.join(self.tmpdir, f)
                 if os.path.isfile(f) and os.stat(f).st_atime <= stale_time:
                     os.remove(f)
-        except:
+        except OSError:
             logging.error('could not delete temp file', exc_info=True)
             pass
 

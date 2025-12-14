@@ -1,0 +1,126 @@
+# Docker ignore file for MotionEye-Custom
+# Excludes files not needed in the Docker build context
+
+# Git
+.git/
+.gitignore
+
+# Documentation (keep README.md and CHANGELOG.md)
+CONTRIBUTING.md
+DEVELOPMENT.md
+NEW_FEATURES.md
+UNINSTALL.md
+docs/INSTALLATION.md
+docs/MOTIONEYE_LITE.md
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+.tox/
+.nox/
+htmlcov/
+
+# Virtual environments
+venv/
+.venv/
+env/
+motioneye_env/
+*.env
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Tests (not needed in production image)
+tests/
+test_*.py
+*.test.py
+
+# macOS-specific build files (not for Docker)
+build/macos_lite_build/
+build/*.sh
+*.dmg
+
+# Logs and runtime
+*.log
+run/
+log/
+media/
+
+# Docker files (avoid copying docker compose files into context)
+docker/docker-compose*.yml
+
+# ===========================================
+# Sensitive Information & PII
+# ===========================================
+
+# Credentials and secrets
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+credentials/
+.secrets
+*.secret
+api_keys.txt
+passwords.txt
+
+# Configuration with potential secrets (use env vars in Docker)
+conf/
+*.conf.local
+*.config.local
+prefs.json
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+rate_limit.db
+
+# Face recognition data (PII - facial biometrics)
+faces/
+face_encodings.json
+face_encodings.pkl
+known_faces.pkl
+*.pkl
+
+# ===========================================
+# Media Files (Videos/Images - user data)
+# ===========================================
+
+# Surveillance recordings
+media/
+recordings/
+snapshots/
+*.mp4
+*.avi
+*.mkv
+*.mov
+*.webm
+*.m4v
+
+# User-uploaded images (except static assets)
+*.jpg
+*.jpeg
+*.bmp
+*.tiff
+*.webp
+
+# Keep logo and static assets
+!logo/
+!motioneye/static/

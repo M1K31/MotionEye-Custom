@@ -51,8 +51,15 @@ class PowerControl:
     @classmethod
     def _exec_prog(cls, prog: str, args: str = '') -> bool:
         p = cls._find_prog(prog)
-        logging.info('executing "%s"' % p)
-        return os.system(p + args) == 0
+        logging.info('executing "%s%s"' % (p, args))
+        # Security fix: Use subprocess.run() instead of os.system() to prevent command injection
+        cmd_args = [p] + args.split() if args.strip() else [p]
+        try:
+            result = subprocess.run(cmd_args, check=False, capture_output=True)
+            return result.returncode == 0
+        except Exception as e:
+            logging.error(f'Failed to execute {p}: {e}')
+            return False
 
     @classmethod
     def _run_procedure(cls, prog_sequence: Dict[str, str], log_msg: str) -> bool:

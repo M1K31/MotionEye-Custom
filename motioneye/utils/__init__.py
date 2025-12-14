@@ -144,11 +144,11 @@ def make_str(s):
     try:
         return str(s)
 
-    except:
+    except (TypeError, ValueError):
         try:
             return str(s, encoding='utf8').encode('utf8')
 
-        except:
+        except (TypeError, ValueError, UnicodeDecodeError):
             return str(s).encode('utf8')
 
 
@@ -244,7 +244,7 @@ def compute_signature(method, path, body: bytes, key):
 
     try:
         body_str = body.decode('utf-8')
-    except:
+    except (UnicodeDecodeError, AttributeError):
         body_str = None
 
     if body_str and body_str.startswith('---'):
@@ -296,7 +296,7 @@ def parse_basic_header(header):
     try:
         decoded = base64.decodebytes(encoded)
 
-    except:
+    except (TypeError, ValueError):
         return None
 
     parts = decoded.split(':', 1)
