@@ -18,38 +18,23 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
-      - name: Cache venv, pip and wheelhouse
+      - name: Cache pip
         uses: actions/cache@v4
         with:
-          path: |
-            .venv
-            ~/.cache/pip
-            .wheelhouse
-          key: ${{ runner.os }}-venv-${{ matrix.python }}-${{ hashFiles('**/pyproject.toml', '**/setup.cfg', '**/setup.py') }}
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.python }}-${{ hashFiles('**/pyproject.toml', '**/setup.cfg', '**/setup.py') }}
           restore-keys: |
-            ${{ runner.os }}-venv-${{ matrix.python }}-
+            ${{ runner.os }}-pip-${{ matrix.python }}-
       - name: Install system deps (ubuntu)
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends build-essential cmake python3-dev libopenblas-dev libjpeg-dev libpng-dev libx11-dev libglib2.0-0 libsm6 libxext6 libcurl4-openssl-dev libssl-dev
-      - name: Create venv and install (use wheelhouse if available)
+      - name: Create venv and install
         run: |
-          if [ -d .venv ]; then
-            echo ".venv restored from cache; activating"
-          else
-            python -m venv .venv
-          fi
+          python -m venv .venv
           source .venv/bin/activate
           python -m pip install --upgrade pip setuptools wheel
-          if [ -d .wheelhouse ]; then
-            echo "Installing from restored wheelhouse"
-            python -m pip install --no-index --find-links=./wheelhouse .
-          else
-            echo "Building wheelhouse and installing"
-            python -m pip wheel . -w ./wheelhouse
-            python -m pip install --no-index --find-links=./wheelhouse .
-          fi
-          python -m pip install pytest
+          python -m pip install . pytest
       - name: Run tests
         run: |
           source .venv/bin/activate
