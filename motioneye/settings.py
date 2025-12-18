@@ -1,5 +1,7 @@
 import logging
+import os
 import os.path
+import platform
 import secrets
 import socket
 import sys
@@ -8,8 +10,8 @@ import motioneye
 
 config_file = None
 
-# interface language
-lingvo = 'eo'
+# interface language (default to English)
+lingvo = 'en'
 
 # available languages
 langlist = [('en', 'English'), ('eo', 'esperanto'), ('fr', 'français')]
@@ -27,7 +29,13 @@ TEMPLATE_PATH = os.path.join(PROJECT_PATH, 'templates')
 STATIC_PATH = os.path.join(PROJECT_PATH, 'static')
 
 # path to the configuration directory (must be writable by motionEye)
-CONF_PATH = [sys.prefix, ''][sys.prefix == '/usr'] + '/etc/motioneye'
+# Allow override via environment variable for flexibility
+if os.environ.get('MOTIONEYE_CONF_PATH'):
+    CONF_PATH = os.environ['MOTIONEYE_CONF_PATH']
+elif platform.system() == 'Windows':
+    CONF_PATH = os.path.join(os.environ.get('APPDATA', 'C:\\'), 'motioneye')
+else:
+    CONF_PATH = [sys.prefix, ''][sys.prefix == '/usr'] + '/etc/motioneye'
 
 # path to the directory where pid files go (must be writable by motionEye)
 for d in ['/run', '/var/run', '/tmp', '/var/tmp']:
@@ -48,7 +56,13 @@ else:
     LOG_PATH = RUN_PATH
 
 # default output path for media files (must be writable by motionEye)
-MEDIA_PATH = '/var/lib/motioneye'
+# Allow override via environment variable
+if os.environ.get('MOTIONEYE_MEDIA_PATH'):
+    MEDIA_PATH = os.environ['MOTIONEYE_MEDIA_PATH']
+elif platform.system() == 'Windows':
+    MEDIA_PATH = os.path.join(os.environ.get('LOCALAPPDATA', 'C:\\'), 'motioneye', 'media')
+else:
+    MEDIA_PATH = '/var/lib/motioneye'
 
 # the log level (use FATAL, ERROR, WARNING, INFO or DEBUG)
 LOG_LEVEL = logging.INFO

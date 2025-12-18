@@ -33,6 +33,7 @@ class MainHandler(BaseHandler):
 
         motion_info = motionctl.find_motion()
         os_version = update.get_os_version()
+        main_config = config.get_main()
 
         self.render(
             'main.html',
@@ -46,7 +47,8 @@ class MainHandler(BaseHandler):
             camera_sections=camera_sections,
             hostname=settings.SERVER_NAME,
             title=self.get_argument('title', None),
-            admin_username=config.get_main().get('@admin_username'),
+            admin_username=main_config.get('@admin_username'),
+            force_password_change=main_config.get('@force_password_change', False),
             has_h264_omx_support=motionctl.has_h264_omx_support(),
             has_h264_v4l2m2m_support=motionctl.has_h264_v4l2m2m_support(),
             has_h264_nvenc_support=motionctl.has_h264_nvenc_support(),

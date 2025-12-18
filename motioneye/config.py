@@ -25,7 +25,6 @@ import subprocess
 import tarfile
 import time
 import io
-import secrets
 from errno import EEXIST, ENOENT
 from re import match, sub
 from shlex import split, quote
@@ -181,9 +180,19 @@ config_cache = ConfigCache(ttl=30)
 
 
 def cached_camera_config(func):
-    """Decorator for caching camera configuration"""
+    """Decorator for caching camera configuration
+    
+    Note: Only caches dict configs (as_lines=False). Line configs are not cached
+    to prevent incorrect type being returned on subsequent calls.
+    """
     @functools.wraps(func)
     def wrapper(camera_id, *args, **kwargs):
+        as_lines = kwargs.get('as_lines', False) or (len(args) > 0 and args[0])
+        
+        # Only cache dict configs, not line lists
+        if as_lines:
+            return func(camera_id, *args, **kwargs)
+        
         # Check cache first
         cached = config_cache.get_cached_config(camera_id)
         if cached is not None:
@@ -396,11 +405,51 @@ def get_main(as_lines=False):
     adapt_config_directives(main_config, _MOTION_44_TO_43_OPTIONS_MAPPING)
 
     _get_additional_config(main_config)
-    _set_default_motion(main_config)
+    needs_save = _set_default_motion(main_config)
 
     _main_config_cache = main_config
+    
+    # If a temp password was generated, persist it to disk so it survives restarts
+    if needs_save:
+        logging.info("Persisting generated temporary password to config file")
+        _persist_main_config(main_config, config_file_path)
 
     return main_config
+
+
+def _persist_main_config(main_config, config_file_path):
+    """Write main config to disk without going through full set_main flow.
+    
+    This is used to persist newly generated temp passwords immediately.
+    """
+    # Build lines from scratch for a minimal config
+    lines = []
+    for key, value in main_config.items():
+        if key.startswith('@'):
+            # Convert Python values to config format
+            if isinstance(value, bool):
+                value = 'on' if value else 'off'
+            elif isinstance(value, dict):
+                continue  # Skip complex objects like @_mqtt
+            lines.append(f'# {key} {value}')
+        elif key == 'camera':
+            # Handle camera list
+            if isinstance(value, list):
+                for cam in value:
+                    lines.append(f'camera {cam}')
+            else:
+                lines.append(f'camera {value}')
+        else:
+            if isinstance(value, bool):
+                value = 'on' if value else 'off'
+            lines.append(f'{key} {value}')
+    
+    try:
+        with open(config_file_path, 'w') as f:
+            f.writelines([line + '\n' for line in lines])
+        logging.debug(f'Persisted main config to {config_file_path}')
+    except Exception as e:
+        logging.error(f'Failed to persist main config: {e}')
 
 
 def set_main(main_config):
@@ -854,6 +903,8 @@ def main_ui_to_dict(ui):
             data['@admin_password'] = hashlib.sha1(
                 ui['admin_password'].encode('utf-8')
             ).hexdigest()
+            # Clear force_password_change when admin sets a new password
+            data['@force_password_change'] = False
 
         else:
             data['@admin_password'] = ''
@@ -900,6 +951,9 @@ def main_dict_to_ui(data):
 
     else:
         ui['normal_password'] = ''
+
+    # Include force_password_change flag so frontend can show password setup dialog
+    ui['force_password_change'] = data.get('@force_password_change', False)
 
     # additional configs
     for name, value in list(data.items()):
@@ -2324,21 +2378,28 @@ def _dict_to_conf(lines, data, list_names=None):
 
 
 def _set_default_motion(data):
+    """Set default values for motion config.
+    
+    Returns:
+        bool: True if default credentials were set and config needs to be saved
+    """
+    needs_save = False
+    
     data.setdefault('@enabled', True)
 
     data.setdefault('@admin_username', 'admin')
 
-    # Generate random password on first install if not set
+    # Set default password "admin" on first install if not set
     if '@admin_password' not in data or not data['@admin_password']:
-        temp_password = secrets.token_urlsafe(16)
-        data['@admin_password'] = hashlib.sha1(temp_password.encode('utf-8')).hexdigest()
+        # Default password is "admin" - SHA1 hash
+        data['@admin_password'] = hashlib.sha1('admin'.encode('utf-8')).hexdigest()
 
-        # Log the temporary password
-        logging.critical(f"**** TEMPORARY ADMIN PASSWORD: {temp_password} ****")
-        logging.critical("**** CHANGE THIS PASSWORD IMMEDIATELY ****")
+        logging.info("Default admin credentials set: username 'admin', password 'admin'")
+        logging.warning("Please change the default password after logging in!")
 
         # Force password change on first login
         data['@force_password_change'] = True
+        needs_save = True
     else:
         data.setdefault('@force_password_change', False)
 
@@ -2362,6 +2423,8 @@ def _set_default_motion(data):
     data.setdefault('webcontrol_parms', 2)
     data.setdefault('@mjpeg_proxy_buffer_size', 3)
     data.setdefault('@config_cache_ttl', 30)
+    
+    return needs_save
 
 
 def _set_default_motion_camera(camera_id, data):

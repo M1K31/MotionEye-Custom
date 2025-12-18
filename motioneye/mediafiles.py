@@ -26,7 +26,6 @@ import typing
 from errno import EAGAIN, ENOENT
 from hashlib import sha1
 from io import BytesIO
-from shlex import quote
 from signal import SIGTERM
 from stat import S_ISDIR, S_ISREG
 from time import time
@@ -41,6 +40,39 @@ from motioneye.utils.dtconv import pretty_date_time
 
 _PICTURE_EXTS = ['.jpg']
 _MOVIE_EXTS = ['.avi', '.mp4', '.mov', '.swf', '.flv', '.mkv']
+
+
+def _validate_media_path(target_dir, path):
+    """Validate that path resolves to within target_dir to prevent path traversal.
+    
+    Args:
+        target_dir: The base directory that media files should be within
+        path: The user-provided relative path
+        
+    Returns:
+        The validated full path
+        
+    Raises:
+        ValueError: If path traversal is detected
+    """
+    # Basic checks
+    if not path:
+        raise ValueError('empty media path')
+    if '..' in path:
+        raise ValueError('invalid media path: contains ..')
+    if path.startswith('/'):
+        raise ValueError('invalid media path: absolute path not allowed')
+    
+    full_path = os.path.join(target_dir, path)
+    
+    # Resolve symlinks and check the real path is under target_dir
+    real_full_path = os.path.realpath(full_path)
+    real_target_dir = os.path.realpath(target_dir)
+    
+    if not real_full_path.startswith(real_target_dir + os.sep) and real_full_path != real_target_dir:
+        raise ValueError('path traversal attempt detected')
+    
+    return full_path
 
 FFMPEG_CODEC_MAPPING = {
     'mpeg4': 'mpeg4',
@@ -237,7 +269,7 @@ def find_ffmpeg() -> tuple:
 
     # version
     try:
-        output = utils.call_subprocess([quote(binary), '-version'])
+        output = utils.call_subprocess([binary, '-version'])
 
     except subprocess.CalledProcessError as e:
         logging.error(f'ffmpeg: could not find version: {e}')
@@ -351,18 +383,18 @@ def make_movie_preview(camera_config: dict, full_path: str) -> typing.Union[str,
     pre_capture = camera_config['pre_capture']
     offs = pre_capture / framerate
     offs = max(4, offs * 2)
-    path = quote(full_path)
     thumb_path = full_path + '.thumb'
 
     logging.debug(
         f'creating movie preview for {full_path} with an offset of {offs} seconds...'
     )
 
-    cmd = f'ffmpeg -i {path} -f mjpeg -vframes 1 -ss {offs} -y {path}.thumb'
-    logging.debug(f'running command "{cmd}"')
+    # Use list arguments to avoid shell injection vulnerabilities
+    cmd = ['ffmpeg', '-i', full_path, '-f', 'mjpeg', '-vframes', '1', '-ss', str(offs), '-y', thumb_path]
+    logging.debug(f'running command {cmd}')
 
     try:
-        utils.call_subprocess(cmd.split(), stderr=subprocess.STDOUT)
+        utils.call_subprocess(cmd, stderr=subprocess.STDOUT)
 
     except subprocess.CalledProcessError as e:
         logging.error(f'failed to create movie preview for {full_path}: {e}')
@@ -382,12 +414,13 @@ def make_movie_preview(camera_config: dict, full_path: str) -> typing.Union[str,
             f'movie probably too short, grabbing first frame from {full_path}...'
         )
 
-        cmd = f'ffmpeg -i {path} -f mjpeg -vframes 1 -ss 0 -y {path}.thumb'
-        logging.debug(f'running command "{cmd}"')
+        # Use list arguments to avoid shell injection vulnerabilities
+        cmd = ['ffmpeg', '-i', full_path, '-f', 'mjpeg', '-vframes', '1', '-ss', '0', '-y', thumb_path]
+        logging.debug(f'running command {cmd}')
 
         # try again, this time grabbing the very first frame
         try:
-            utils.call_subprocess(cmd.split(), stderr=subprocess.STDOUT)
+            utils.call_subprocess(cmd, stderr=subprocess.STDOUT)
 
         except subprocess.CalledProcessError as e:
             logging.error(f'failed to create movie preview for {full_path}: {e}')
@@ -509,18 +542,39 @@ def list_media(camera_config: dict, media_type: str, prefix=None) -> typing.Awai
 
 
 def get_media_path(camera_config, path, media_type):
+    """Get the full filesystem path for a media file.
+    
+    Args:
+        camera_config: Camera configuration dict
+        path: Relative path to media file
+        media_type: Type of media ('picture' or 'movie')
+        
+    Returns:
+        Full filesystem path
+        
+    Raises:
+        ValueError: If path traversal is detected
+    """
     target_dir = camera_config.get('target_dir')
-    full_path = os.path.join(target_dir, path)
-    return full_path
+    return _validate_media_path(target_dir, path)
 
 
 def get_media_content(camera_config, path, media_type):
+    """Read and return the contents of a media file.
+    
+    Args:
+        camera_config: Camera configuration dict
+        path: Relative path to media file
+        media_type: Type of media ('picture' or 'movie')
+        
+    Returns:
+        File contents as bytes, or None on error
+        
+    Raises:
+        ValueError: If path traversal is detected
+    """
     target_dir = camera_config.get('target_dir')
-
-    if '..' in path:
-        raise Exception('invalid media path')
-
-    full_path = os.path.join(target_dir, path)
+    full_path = _validate_media_path(target_dir, path)
 
     try:
         with open(full_path, 'rb') as f:
@@ -956,9 +1010,18 @@ def get_media_preview(camera_config, path, media_type, width, height):
 
 
 def del_media_content(camera_config, path, media_type):
+    """Delete a media file.
+    
+    Args:
+        camera_config: Camera configuration dict
+        path: Relative path to media file
+        media_type: Type of media ('picture' or 'movie')
+        
+    Raises:
+        ValueError: If path traversal is detected
+    """
     target_dir = camera_config.get('target_dir')
-
-    full_path = os.path.join(target_dir, path)
+    full_path = _validate_media_path(target_dir, path)
 
     # create a sentinel file to make sure the target dir is never removed
     open(os.path.join(target_dir, '.keep'), 'w').close()

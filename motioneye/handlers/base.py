@@ -83,12 +83,21 @@ class BaseHandler(RequestHandler):
             allowed_paths = [
                 '/',
                 '/login',
+                '/login/',
                 '/config/list',
+                '/config/list/',
                 '/config/main/get',
+                '/config/main/get/',
                 '/config/main/set',
+                '/config/main/set/',
                 '/version',
+                '/version/',
+                '/prefs',
+                '/prefs/',
                 '/prefs/set',
+                '/prefs/set/',
                 '/prefs/get',
+                '/prefs/get/',
             ]
 
             # Also allow access to static files, logs, etc.
@@ -102,13 +111,20 @@ class BaseHandler(RequestHandler):
                 self.redirect('/')
 
     def check_xsrf_cookie(self):
-        """Override Tornado's XSRF check for custom implementation."""
-        if self.request.method in ['POST', 'DELETE', 'PUT']:
-            token = self.get_argument('_xsrf', None)
-            cookie_token = self.get_secure_cookie('_xsrf')
-
-            if not token or not cookie_token or token != cookie_token.decode():
-                raise HTTPError(403, 'CSRF token missing or invalid')
+        """
+        Override Tornado's XSRF check.
+        
+        MotionEye uses signature-based authentication (_signature parameter)
+        instead of XSRF cookies. The signature is computed using HMAC-SHA1
+        with the user's password as the key. This provides equivalent CSRF
+        protection since the signature cannot be forged without knowing
+        the password.
+        
+        See utils.compute_signature() for the signature computation.
+        """
+        # MotionEye uses signature-based auth, not XSRF cookies
+        # The signature is validated in get_current_user()
+        pass
 
     def get_all_arguments(self) -> dict:
         keys = list(self.request.arguments.keys())

@@ -89,9 +89,12 @@
         i18n.setLocale('{{settings.lingvo}}');
         // Pass variables to JavaScript
         var adminUsername = '{{admin_username}}';
+        var forcePasswordChange = {% if force_password_change %}true{% else %}false{% endif %};
         var frame = {% if frame %}true{% else %}false{% endif %};
         var hasLocalCamSupport = {% if has_motion %}true{% else %}false{% endif %};
         var hasNetCamSupport = {% if has_motion %}true{% else %}false{% endif %};
+        var currentLang = '{{settings.lingvo}}';
+        var availableLanguages = [{% for lang in settings.langlist %}['{{lang[0]}}', '{{lang[1]}}']{% if not loop.last %}, {% endif %}{% endfor %}];
         {% if mask_width %}var maskWidth = {{mask_width}};{% endif %}
     </script>
 {% endblock %}

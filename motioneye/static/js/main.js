@@ -400,7 +400,7 @@ function addAuthParams(method, url, body) {
 }
 
 function isAdmin() {
-    return username === adminUsername;
+    return window.username === adminUsername;
 }
 
 function ajax(method, url, data, callback, error, timeout) {
@@ -3459,7 +3459,16 @@ function fetchCurrentConfig(onFetch) {
                 }
 
                 dict2MainUi(data);
-                fetchCameraList();
+
+                /* check if password change is required (first install) */
+                if (data.force_password_change || forcePasswordChange) {
+                    forcePasswordChange = false; /* reset the flag */
+                    runPasswordSetupDialog(function () {
+                        fetchCameraList();
+                    });
+                } else {
+                    fetchCameraList();
+                }
             });
         }
         else {
@@ -3650,10 +3659,11 @@ function runLoginDialog(retry) {
                 window.passwordHash = sha1(passwordEntry.val()).toLowerCase();
                 window._loginDialogSubmitted = true;
 
-                if (rememberCheck[0].checked) {
-                    setCookie(USERNAME_COOKIE, window.username, /* days = */ 3650);
-                    setCookie(PASSWORD_COOKIE, window.passwordHash, /* days = */ 3650);
-                }
+                // Always save cookies for session persistence
+                // "Remember me" controls how long the cookies last
+                var cookieDays = rememberCheck[0].checked ? 3650 : 1;
+                setCookie(USERNAME_COOKIE, window.username, cookieDays);
+                setCookie(PASSWORD_COOKIE, window.passwordHash, cookieDays);
 
                 form.submit();
                 setTimeout(function () {
@@ -3663,6 +3673,126 @@ function runLoginDialog(retry) {
                 if (retry) {
                     retry();
                 }
+            }}
+        ]
+    };
+
+    runModalDialog(params);
+}
+
+function runPasswordSetupDialog(onComplete) {
+    // Build language options from availableLanguages (passed from template)
+    var langOptions = '';
+    if (typeof availableLanguages !== 'undefined') {
+        for (var i = 0; i < availableLanguages.length; i++) {
+            var selected = (availableLanguages[i][0] === currentLang) ? ' selected' : '';
+            langOptions += '<option value="' + availableLanguages[i][0] + '"' + selected + '>' + availableLanguages[i][1] + '</option>';
+        }
+    }
+
+    var form = $('<table class="login-dialog">' +
+        '<tr>' +
+            '<td colspan="100" style="padding-bottom: 15px;">' +
+                '<span style="color: #888;">Please set a new admin password to secure your installation.</span>' +
+            '</td>' +
+        '</tr>' +
+        '<tr>' +
+            '<td class="login-dialog-error" colspan="100"></td>' +
+        '</tr>' +
+        '<tr>' +
+            '<td class="dialog-item-label"><span class="dialog-item-label">New Password</span></td>' +
+            '<td class="dialog-item-value"><input type="password" class="styled" id="newPasswordEntry" autofocus></td>' +
+        '</tr>' +
+        '<tr>' +
+            '<td class="dialog-item-label"><span class="dialog-item-label">Confirm Password</span></td>' +
+            '<td class="dialog-item-value"><input type="password" class="styled" id="confirmPasswordEntry"></td>' +
+        '</tr>' +
+        '<tr>' +
+            '<td colspan="100" style="padding-top: 20px; text-align: right;">' +
+                '<span style="color: #888; margin-right: 10px;">Language:</span>' +
+                '<select class="styled" id="setupLangSelect" style="width: auto;">' + langOptions + '</select>' +
+            '</td>' +
+        '</tr>' +
+    '</table>');
+
+    var newPasswordEntry = form.find('#newPasswordEntry');
+    var confirmPasswordEntry = form.find('#confirmPasswordEntry');
+    var langSelect = form.find('#setupLangSelect');
+    var errorTd = form.find('td.login-dialog-error');
+
+    // Handle language change - reload page with new language
+    langSelect.change(function() {
+        var selectedLang = $(this).val();
+        // Save the language preference via AJAX
+        var mainConfig = {
+            'admin_username': adminUsername,
+            'normal_username': '',
+            'lang': selectedLang
+        };
+        ajax('POST', basePath + 'config/main/set/', mainConfig, function (data) {
+            // Reload page to apply new language
+            window.location.reload(true);
+        });
+    });
+
+    var params = {
+        title: 'Set Admin Password',
+        content: form,
+        buttons: [
+            {caption: 'Save', isDefault: true, click: function () {
+                var newPassword = newPasswordEntry.val();
+                var confirmPassword = confirmPasswordEntry.val();
+
+                // Validate passwords
+                if (!newPassword) {
+                    errorTd.css('display', 'table-cell');
+                    errorTd.html('Password cannot be empty.');
+                    return false;
+                }
+
+                if (newPassword !== confirmPassword) {
+                    errorTd.css('display', 'table-cell');
+                    errorTd.html('Passwords do not match.');
+                    return false;
+                }
+
+                if (newPassword.length < 4) {
+                    errorTd.css('display', 'table-cell');
+                    errorTd.html('Password must be at least 4 characters.');
+                    return false;
+                }
+
+                // Update the main config with the new password
+                var mainConfig = mainUi2Dict();
+                mainConfig['admin_password'] = newPassword;
+
+                // Save the new password
+                ajax('POST', basePath + 'config/main/set/', mainConfig, function (data) {
+                    if (data == null || data.error) {
+                        errorTd.css('display', 'table-cell');
+                        errorTd.html(data && data.error ? data.error : 'Error saving password.');
+                        return;
+                    }
+
+                    // Set the username to admin and update password hash for subsequent requests
+                    window.username = adminUsername;
+                    window.passwordHash = sha1(newPassword).toLowerCase();
+                    // Save both username and password cookies for session persistence
+                    setCookie(USERNAME_COOKIE, window.username, /* days = */ 3650);
+                    setCookie(PASSWORD_COOKIE, window.passwordHash, /* days = */ 3650);
+
+                    // Close dialog and continue
+                    hideModalDialog();
+
+                    // Reload the page to ensure all state is fresh
+                    if (data.reload) {
+                        window.location.reload(true);
+                    } else if (onComplete) {
+                        onComplete();
+                    }
+                });
+
+                return false; // Don't close dialog automatically, we'll do it after save
             }}
         ]
     };

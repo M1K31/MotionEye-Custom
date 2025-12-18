@@ -80,17 +80,27 @@ _DEV_V4L_BY_ID = '/dev/v4l/by-id/'
 _V4L2_TIMEOUT = 10
 
 def validate_device_path(device):
-    """Validate and sanitize device path input to prevent injection attacks"""
+    """Validate and sanitize device path input to prevent injection attacks
+    
+    Supported device types:
+    - /dev/videoN - Standard V4L2 video devices (USB cameras, built-in webcams)
+    - /dev/v4l/by-id/* - Persistent device paths by USB ID
+    - /dev/v4l/by-path/* - Persistent device paths by physical port
+    
+    Explicitly excluded:
+    - /dev/mediaN - Media controller devices (not video capture devices)
+    - /dev/vbiN - VBI (teletext) devices
+    """
     if not device:
         raise ValueError("Device path cannot be empty")
     
     device = make_str(device)
     
-    # Allow only valid device paths
+    # Allow only valid video capture device paths
     valid_patterns = [
-        r'^/dev/video\d+$',  # Standard video devices
-        r'^/dev/v4l/by-id/[a-zA-Z0-9_.-]+$',  # Persistent device paths
-        r'^/dev/v4l/by-path/[a-zA-Z0-9_:.-]+$'  # Path-based persistent devices
+        r'^/dev/video\d+$',  # Standard video devices (USB cameras, built-in webcams)
+        r'^/dev/v4l/by-id/[a-zA-Z0-9_.:+-]+$',  # Persistent device paths by ID (allow : and +)
+        r'^/dev/v4l/by-path/[a-zA-Z0-9_.:+-]+$'  # Path-based persistent devices
     ]
     
     if not any(re.match(pattern, device) for pattern in valid_patterns):
