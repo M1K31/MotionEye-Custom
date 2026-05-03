@@ -15,7 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import hashlib
 import json
 import logging
 import secrets
@@ -24,7 +23,7 @@ import gc
 
 from tornado.web import HTTPError, RequestHandler
 
-from motioneye import config, prefs, settings, template, utils
+from motioneye import config, passwords, prefs, settings, template, utils
 
 __all__ = ('BaseHandler', 'NotFoundHandler', 'ManifestHandler')
 
@@ -215,40 +214,33 @@ class BaseHandler(RequestHandler):
         admin_username = main_config.get('@admin_username')
         normal_username = main_config.get('@normal_username')
 
-        admin_password = main_config.get('@admin_password')
-        normal_password = main_config.get('@normal_password')
+        admin_password = main_config.get('@admin_password', '')
+        normal_password = main_config.get('@normal_password', '')
 
-        admin_hash = hashlib.sha1(
-            main_config['@admin_password'].encode('utf-8')
-        ).hexdigest()
-        normal_hash = hashlib.sha1(
-            main_config['@normal_password'].encode('utf-8')
-        ).hexdigest()
+        # Signature HMAC key — separate from the (bcrypt) password hash. Falls back
+        # to the legacy SHA-1 hash for installs not yet re-saved on bcrypt.
+        admin_sig_key = main_config.get('@admin_password_sig_key') or (
+            admin_password if passwords.is_legacy_hash(admin_password) else ''
+        )
+        normal_sig_key = main_config.get('@normal_password_sig_key') or (
+            normal_password if passwords.is_legacy_hash(normal_password) else ''
+        )
 
         if settings.HTTP_BASIC_AUTH and 'Authorization' in self.request.headers:
             up = utils.parse_basic_header(self.request.headers['Authorization'])
             if up:
-                if up['username'] == admin_username and admin_password in (
-                    up['password'],
-                    hashlib.sha1(up['password'].encode('utf-8')).hexdigest(),
+                if up['username'] == admin_username and passwords.verify_password(
+                    up['password'], admin_password
                 ):
                     return 'admin'
 
-                if up['username'] == normal_username and normal_password in (
-                    up['password'],
-                    hashlib.sha1(up['password'].encode('utf-8')).hexdigest(),
+                if up['username'] == normal_username and passwords.verify_password(
+                    up['password'], normal_password
                 ):
                     return 'normal'
 
-        if username == admin_username and (
-            signature
-            == utils.compute_signature(
-                self.request.method, self.request.uri, self.request.body, admin_password
-            )
-            or signature
-            == utils.compute_signature(
-                self.request.method, self.request.uri, self.request.body, admin_hash
-            )
+        if username == admin_username and signature == utils.compute_signature(
+            self.request.method, self.request.uri, self.request.body, admin_sig_key
         ):
             return 'admin'
 
@@ -256,18 +248,8 @@ class BaseHandler(RequestHandler):
         if not username and not normal_password:
             return 'normal'
 
-        if username == normal_username and (
-            signature
-            == utils.compute_signature(
-                self.request.method,
-                self.request.uri,
-                self.request.body,
-                normal_password,
-            )
-            or signature
-            == utils.compute_signature(
-                self.request.method, self.request.uri, self.request.body, normal_hash
-            )
+        if username == normal_username and signature == utils.compute_signature(
+            self.request.method, self.request.uri, self.request.body, normal_sig_key
         ):
             return 'normal'
 

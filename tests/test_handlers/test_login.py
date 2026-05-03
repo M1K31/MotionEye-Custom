@@ -32,10 +32,12 @@ class LoginHandlerTest(HandlerTestCase):
         main_config['@force_password_change'] = True
         config.set_main(main_config)
 
-        admin_password = main_config.get('@admin_password')
+        # Signed requests use the sig_key (sha1 of password), not the
+        # bcrypt @admin_password hash directly.
+        sig_key = main_config.get('@admin_password_sig_key', '')
         timestamp = int(time.time())
         uri = f'/login/?_={timestamp}&_username=admin&_login=true'
-        signature = utils.compute_signature('GET', uri, '', admin_password)
+        signature = utils.compute_signature('GET', uri, '', sig_key)
         url = f'{uri}&_signature={signature}'
 
         response = self.fetch(url)

@@ -18,7 +18,6 @@ import collections
 import datetime
 import functools
 import glob
-import hashlib
 import logging
 import os.path
 import subprocess
@@ -32,7 +31,7 @@ from urllib.parse import urlunparse
 
 from tornado.ioloop import IOLoop
 
-from motioneye import meyectl, motionctl, settings, tasks, uploadservices, utils
+from motioneye import meyectl, motionctl, passwords, settings, tasks, uploadservices, utils
 import sys
 
 from motioneye.controls import diskctl, smbctl
@@ -900,19 +899,24 @@ def main_ui_to_dict(ui):
 
     if ui.get('admin_password') is not None:
         if ui['admin_password']:
-            data['@admin_password'] = hashlib.sha1(
-                ui['admin_password'].encode('utf-8')
-            ).hexdigest()
+            data['@admin_password'] = passwords.hash_password(ui['admin_password'])
+            data['@admin_password_sig_key'] = passwords.compute_sig_key(
+                ui['admin_password']
+            )
             # Clear force_password_change when admin sets a new password
             data['@force_password_change'] = False
 
         else:
             data['@admin_password'] = ''
+            data['@admin_password_sig_key'] = ''
 
         call_hook(ui['admin_username'], ui['admin_password'])
 
     if ui.get('normal_password') is not None:
-        data['@normal_password'] = ui['normal_password']
+        data['@normal_password'] = passwords.hash_password(ui['normal_password'])
+        data['@normal_password_sig_key'] = passwords.compute_sig_key(
+            ui['normal_password']
+        )
 
         call_hook(ui['normal_username'], ui['normal_password'])
 
@@ -2391,8 +2395,9 @@ def _set_default_motion(data):
 
     # Set default password "admin" on first install if not set
     if '@admin_password' not in data or not data['@admin_password']:
-        # Default password is "admin" - SHA1 hash
-        data['@admin_password'] = hashlib.sha1('admin'.encode('utf-8')).hexdigest()
+        # Default password is "admin" - bcrypt hashed; sig_key holds sha1
+        data['@admin_password'] = passwords.hash_password('admin')
+        data['@admin_password_sig_key'] = passwords.compute_sig_key('admin')
 
         logging.info("Default admin credentials set: username 'admin', password 'admin'")
         logging.warning("Please change the default password after logging in!")
