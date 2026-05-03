@@ -9,13 +9,21 @@ all: localization
 # Localization targets
 localization: motioneye/locale/*/LC_MESSAGES/motioneye.mo motioneye/static/js/motioneye.*.json
 
-# Development targets  
-dev-install:
-	pip install -e .
-	pip install pytest pytest-cov black flake8 pre-commit
-
 # Detect virtual environment
 PYTHON := $(shell if [ -f motioneye_env/bin/python ]; then echo motioneye_env/bin/python; else echo python3; fi)
+PIP := $(shell if [ -f motioneye_env/bin/pip ]; then echo motioneye_env/bin/pip; else echo pip3; fi)
+
+# Development targets
+# Creates motioneye_env/ if it does not exist, then installs the package
+# and dev tooling. Idempotent.
+dev-install:
+	@if [ ! -d motioneye_env ]; then \
+		echo "Creating virtual environment in motioneye_env/ ..."; \
+		python3 -m venv motioneye_env; \
+		motioneye_env/bin/pip install --upgrade pip setuptools wheel; \
+	fi
+	motioneye_env/bin/pip install -e .
+	motioneye_env/bin/pip install pytest pytest-cov black flake8 pre-commit
 
 test:
 	$(PYTHON) -m pytest -v

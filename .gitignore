@@ -243,4 +243,8 @@ snapshots/
 *.bak
 *.tmp
 *.temp
-*~motioneye_env/
+*~
+
+# Project-specific virtual environment (CONTRIBUTING.md / DEVELOPMENT.md
+# instruct contributors to create this directory).
+motioneye_env/
