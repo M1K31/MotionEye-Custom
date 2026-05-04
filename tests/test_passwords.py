@@ -38,3 +38,24 @@ class PasswordsTest(unittest.TestCase):
 
     def test_compute_sig_key_empty(self):
         self.assertEqual(passwords.compute_sig_key(''), '')
+
+    def test_verify_malformed_stored_hash(self):
+        # bcrypt.checkpw raises on malformed input; verify_password must swallow
+        # the exception and return False (no traceback leakage to callers).
+        self.assertFalse(passwords.verify_password('anything', 'garbage'))
+        self.assertFalse(passwords.verify_password('x', '$2b$invalid'))
+        self.assertFalse(passwords.verify_password('x', '$2b$12$short'))
+
+    def test_basic_auth_does_not_accept_bcrypt_hash_as_password(self):
+        # Q8 regression: previously the basic-auth check accepted EITHER the
+        # raw password OR its stored hash. Now we must reject the stored
+        # hash being submitted as a password.
+        h = passwords.hash_password('secret')
+        self.assertFalse(passwords.verify_password(h, h),
+                         'bcrypt hash submitted as password must not authenticate')
+
+    def test_basic_auth_does_not_accept_legacy_sha1_hash_as_password(self):
+        # Same Q8 regression for legacy SHA-1 stored hashes.
+        legacy = 'e5e9fa1ba31ecd1ae84f75caaa474f3a663f05f4'  # sha1('secret')
+        self.assertFalse(passwords.verify_password(legacy, legacy),
+                         'SHA-1 hash submitted as password must not authenticate')

@@ -30,6 +30,10 @@ __all__ = ('BaseHandler', 'NotFoundHandler', 'ManifestHandler')
 
 class BaseHandler(RequestHandler):
     _active_handlers = weakref.WeakSet()
+    # Operability flags: emit a single warning per process when an
+    # @*_password is set but its corresponding sig_key is missing.
+    _warned_admin_sig_key_missing = False
+    _warned_normal_sig_key_missing = False
 
     def on_finish(self):
         """Cleanup after request completes."""
@@ -226,6 +230,22 @@ class BaseHandler(RequestHandler):
             normal_password if passwords.is_legacy_hash(normal_password) else ''
         )
 
+        # Operability: warn once per process when @*_password is bcrypt but
+        # the corresponding sig_key is missing — signature auth would silently
+        # break for that user until the password is re-saved.
+        if admin_password and not admin_sig_key and not BaseHandler._warned_admin_sig_key_missing:
+            logging.warning(
+                '@admin_password_sig_key is missing while @admin_password is set; '
+                'signature auth disabled for admin until the password is re-saved.'
+            )
+            BaseHandler._warned_admin_sig_key_missing = True
+        if normal_password and not normal_sig_key and not BaseHandler._warned_normal_sig_key_missing:
+            logging.warning(
+                '@normal_password_sig_key is missing while @normal_password is set; '
+                'signature auth disabled for normal user until the password is re-saved.'
+            )
+            BaseHandler._warned_normal_sig_key_missing = True
+
         if settings.HTTP_BASIC_AUTH and 'Authorization' in self.request.headers:
             up = utils.parse_basic_header(self.request.headers['Authorization'])
             if up:
@@ -239,8 +259,14 @@ class BaseHandler(RequestHandler):
                 ):
                     return 'normal'
 
-        if username == admin_username and signature == utils.compute_signature(
-            self.request.method, self.request.uri, self.request.body, admin_sig_key
+        # Empty sig_key would let an attacker forge a deterministic HMAC of an
+        # empty key; require a non-empty key for signature auth to succeed.
+        if (
+            username == admin_username
+            and admin_sig_key
+            and signature == utils.compute_signature(
+                self.request.method, self.request.uri, self.request.body, admin_sig_key
+            )
         ):
             return 'admin'
 
@@ -248,8 +274,12 @@ class BaseHandler(RequestHandler):
         if not username and not normal_password:
             return 'normal'
 
-        if username == normal_username and signature == utils.compute_signature(
-            self.request.method, self.request.uri, self.request.body, normal_sig_key
+        if (
+            username == normal_username
+            and normal_sig_key
+            and signature == utils.compute_signature(
+                self.request.method, self.request.uri, self.request.body, normal_sig_key
+            )
         ):
             return 'normal'
 
