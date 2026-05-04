@@ -15,11 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import gc
+import hmac
 import json
 import logging
 import secrets
 import weakref
-import gc
 
 from tornado.web import HTTPError, RequestHandler
 
@@ -261,11 +262,17 @@ class BaseHandler(RequestHandler):
 
         # Empty sig_key would let an attacker forge a deterministic HMAC of an
         # empty key; require a non-empty key for signature auth to succeed.
+        # Use hmac.compare_digest for constant-time comparison (C2: prevents
+        # byte-level timing-attack signature recovery).
         if (
             username == admin_username
             and admin_sig_key
-            and signature == utils.compute_signature(
-                self.request.method, self.request.uri, self.request.body, admin_sig_key
+            and signature is not None
+            and hmac.compare_digest(
+                signature,
+                utils.compute_signature(
+                    self.request.method, self.request.uri, self.request.body, admin_sig_key
+                ),
             )
         ):
             return 'admin'
@@ -277,8 +284,12 @@ class BaseHandler(RequestHandler):
         if (
             username == normal_username
             and normal_sig_key
-            and signature == utils.compute_signature(
-                self.request.method, self.request.uri, self.request.body, normal_sig_key
+            and signature is not None
+            and hmac.compare_digest(
+                signature,
+                utils.compute_signature(
+                    self.request.method, self.request.uri, self.request.body, normal_sig_key
+                ),
             )
         ):
             return 'normal'
