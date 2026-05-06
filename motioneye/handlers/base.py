@@ -179,6 +179,23 @@ class BaseHandler(RequestHandler):
 
         return argument
 
+    @property
+    def csp_nonce(self) -> str:
+        """Per-request random nonce for CSP `script-src` allowlisting.
+
+        Generated lazily on first access and reused for the lifetime of
+        the request. Templates render `<script nonce="{{csp_nonce}}">`
+        to opt server-rendered inline scripts into the CSP allowlist
+        without weakening the policy with `'unsafe-inline'`.
+        """
+        nonce = getattr(self, '_csp_nonce', None)
+        if nonce is None:
+            import base64
+            import os as _os
+            nonce = base64.b64encode(_os.urandom(18)).decode('ascii')
+            self._csp_nonce = nonce
+        return nonce
+
     def finish(self, chunk=None):
         if not self._finished:
             # Security headers
@@ -187,12 +204,15 @@ class BaseHandler(RequestHandler):
             self.set_header('X-Frame-Options', 'DENY')
             self.set_header('Referrer-Policy', 'no-referrer')
             # Q9: strict CSP prevents inline-script XSS. style-src keeps
-            # 'unsafe-inline' because the existing UI uses inline styles;
-            # script-src is locked down to same-origin.
+            # 'unsafe-inline' because the existing UI uses inline styles
+            # extensively; script-src uses a per-request nonce so the
+            # template-rendered inline data scripts (server-trusted)
+            # execute while injected scripts (attacker-controlled) do not.
+            nonce = self.csp_nonce
             self.set_header(
                 'Content-Security-Policy',
                 "default-src 'self'; "
-                "script-src 'self'; "
+                f"script-src 'self' 'nonce-{nonce}'; "
                 "style-src 'self' 'unsafe-inline'; "
                 "img-src 'self' data: blob:; "
                 "media-src 'self' blob:; "
@@ -216,6 +236,8 @@ class BaseHandler(RequestHandler):
         self.set_header('Content-Type', content_type)
 
         context.setdefault('version', VERSION)
+        # Make the CSP nonce available to templates as {{csp_nonce}}.
+        context.setdefault('csp_nonce', self.csp_nonce)
         if self.xsrf_token:
             context['xsrf_token'] = self.xsrf_token.decode('utf-8')
 

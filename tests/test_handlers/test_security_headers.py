@@ -34,6 +34,21 @@ class SecurityHeadersTest(HandlerTestCase):
         response = self.fetch('/manifest.json')
         self.assertNotIn('Strict-Transport-Security', response.headers)
 
+    def test_csp_includes_per_request_nonce(self):
+        """script-src must carry a per-request nonce so server-rendered
+        inline scripts execute without weakening CSP with 'unsafe-inline'."""
+        import re
+        first = self.fetch('/manifest.json')
+        second = self.fetch('/manifest.json')
+        m1 = re.search(r"'nonce-([A-Za-z0-9+/=]+)'", first.headers['Content-Security-Policy'])
+        m2 = re.search(r"'nonce-([A-Za-z0-9+/=]+)'", second.headers['Content-Security-Policy'])
+        self.assertIsNotNone(m1, 'CSP must contain nonce-<value>')
+        self.assertIsNotNone(m2)
+        self.assertNotEqual(m1.group(1), m2.group(1),
+                            'CSP nonce must be regenerated per request')
+        self.assertGreaterEqual(len(m1.group(1)), 16,
+                                'CSP nonce must be at least 16 chars (NIST SP 800-63B)')
+
 
 class XsrfGuardSourceTest(unittest.TestCase):
     """Source-level guard for Q5 — XSRF re-enabled for state-changing requests."""

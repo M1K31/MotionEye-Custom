@@ -73,7 +73,7 @@
     {{super()}}
     <!-- gettext.js required for setting language -->
     <script src="{{static_path}}js/gettext.min.js"></script>
-    <script>
+    <script nonce="{{csp_nonce}}">
         var i18n = window.i18n();
       {% if settings.lingvo != 'eo' %}
         // Set language for JavaScript
