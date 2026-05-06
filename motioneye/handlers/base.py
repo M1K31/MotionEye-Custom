@@ -15,7 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import gc
 import hmac
 import json
 import logging
@@ -24,7 +23,7 @@ import weakref
 
 from tornado.web import HTTPError, RequestHandler
 
-from motioneye import config, passwords, prefs, settings, template, utils
+from motioneye import VERSION, config, passwords, prefs, settings, template, utils
 
 __all__ = ('BaseHandler', 'NotFoundHandler', 'ManifestHandler')
 
@@ -47,11 +46,14 @@ class BaseHandler(RequestHandler):
         self._cleanup()
 
     def _cleanup(self):
+        """Drop large per-request buffers to help GC.
+
+        Q2: removed the previous `gc.collect()` call that fired on every
+        request when >50 handlers were active — that synchronously
+        stalled the Tornado event loop. Python's generational GC
+        handles this automatically; the periodic background sweep in
+        setup_memory_management still runs every 5 minutes if needed.
         """
-        Perform cleanup operations to prevent memory leaks.
-        This is called when the request is finished or the connection is closed.
-        """
-        # Fixed: Changed default from True to False so cleanup actually runs
         if getattr(self, '_cleanup_registered', False):
             return
 
@@ -59,9 +61,6 @@ class BaseHandler(RequestHandler):
 
         if hasattr(self, '_image_data'):
             self._image_data = None
-
-        if len(BaseHandler._active_handlers) > 50:
-            gc.collect()
 
     @classmethod
     def get_active_count(cls):
@@ -183,10 +182,8 @@ class BaseHandler(RequestHandler):
 
     def finish(self, chunk=None):
         if not self._finished:
-            import motioneye
-
             # Security headers
-            self.set_header('Server', f'motionEye/{motioneye.VERSION}')
+            self.set_header('Server', f'motionEye/{VERSION}')
             self.set_header('X-Content-Type-Options', 'nosniff')
             self.set_header('X-Frame-Options', 'DENY')
             self.set_header('Referrer-Policy', 'no-referrer')
@@ -217,11 +214,9 @@ class BaseHandler(RequestHandler):
             logging.debug('Already finished')
 
     def render(self, template_name, content_type='text/html', **context):
-        import motioneye
-
         self.set_header('Content-Type', content_type)
 
-        context.setdefault('version', motioneye.VERSION)
+        context.setdefault('version', VERSION)
         if self.xsrf_token:
             context['xsrf_token'] = self.xsrf_token.decode('utf-8')
 

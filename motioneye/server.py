@@ -459,30 +459,29 @@ def setup_memory_management(ioloop):
 
 
 def configure_high_performance_ioloop():
-    """Configure Tornado for maximum performance"""
-    import tornado.platform.asyncio
-    import asyncio
-    import logging
+    """Configure Tornado for maximum performance.
 
-    # Use uvloop if available (3x faster than asyncio)
+    Q4: removed shadowed `import logging` (already imported at module
+    top) and the deprecated `tornado.platform.asyncio.AsyncIOMainLoop().install()`
+    call (a no-op on Tornado 6.x — the asyncio policy is auto-detected).
+    """
+    import asyncio
+    import resource
+
     try:
         import uvloop
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-        logging.info("Using uvloop for high-performance event loop")
+        logging.info('Using uvloop for high-performance event loop')
     except ImportError:
-        logging.info("uvloop not available, using default asyncio")
+        logging.info('uvloop not available, using default asyncio')
 
-    # Configure Tornado
-    tornado.platform.asyncio.AsyncIOMainLoop().install()
-
-    # Increase file descriptor limit
-    import resource
     try:
-        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
-        resource.setrlimit(resource.RLIMIT_NOFILE, (min(4096, hard), hard))
-        logging.info(f"File descriptor limit increased to {min(4096, hard)}")
-    except Exception as e:
-        logging.warning(f"Could not increase file descriptor limit: {e}")
+        _, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        target = min(4096, hard)
+        resource.setrlimit(resource.RLIMIT_NOFILE, (target, hard))
+        logging.info(f'File descriptor limit set to {target}')
+    except (OSError, ValueError) as e:
+        logging.warning(f'Could not increase file descriptor limit: {e}')
 
 
 def run():
@@ -546,15 +545,7 @@ def run():
     template.add_context('static_path', 'static/')
     template.add_context('lingvo', settings.lingvo)
 
-    application = Application(
-        handler_mapping,
-        debug=False,
-        log_function=_log_request,
-        static_path=settings.STATIC_PATH,
-        static_url_prefix='/static/',
-        xsrf_cookies=True,
-        cookie_secret=settings.COOKIE_SECRET,
-    )
+    application = make_app(debug=False)
 
     application.listen(settings.PORT, settings.LISTEN)
     logging.info(_('servilo komenciĝis'))
