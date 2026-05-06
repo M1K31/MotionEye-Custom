@@ -72,7 +72,11 @@ class Daemon:
 
         # separate from parent
         os.setsid()
-        os.umask(0)
+        # Q6: previously umask(0) made all daemon-created files (config,
+        # logs, recordings) world-readable AND world-writable. 0o027
+        # restricts to owner+group; group still gets read for log
+        # rotation tools that need it.
+        os.umask(0o027)
 
         # second fork
         try:
