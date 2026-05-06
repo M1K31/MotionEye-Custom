@@ -172,33 +172,19 @@ def _reconstruct_task(task_data):
     return (task_data['when'], func, task_data.get('tag'), None, task_data.get('params', {}))
 
 
-def _convert_legacy_pickle_file(pickle_file_path):
-    try:
-        import pickle
-        backup_file = f"{pickle_file_path}.backup"
-        os.rename(pickle_file_path, backup_file)
+def _convert_legacy_pickle_file(legacy_path):
+    """Refuse to deserialize legacy binary task-queue files.
 
-        with open(backup_file, 'rb') as f:
-            legacy_tasks = pickle.load(f)
-
-        global _tasks
-        _tasks = []
-        for task in legacy_tasks:
-            if len(task) >= 5:
-                when, func, tag, callback, params = task[:5]
-                func_name = f"{getattr(func, '__module__', '')}.{getattr(func, '__name__', '')}"
-                if func_name in _safe_tasks_map:
-                    _tasks.append((when, _safe_tasks_map[func_name], tag, None, params))
-                else:
-                    logging.warning(f"Skipping unsafe function in legacy conversion: {func_name}")
-        _save()
-        logging.info("Successfully converted legacy pickle file to secure format")
-        logging.info(f"Legacy file backed up as: {backup_file}")
-    except Exception as e:
-        logging.error(f"Error converting legacy pickle file: {e}")
-        backup_file = f"{pickle_file_path}.backup"
-        if os.path.exists(backup_file):
-            os.rename(backup_file, pickle_file_path)
+    Loading attacker-influenced binary serialization data is an
+    arbitrary-code-execution vulnerability. Instead, log a warning and
+    leave the legacy file untouched -- the operator can delete it.
+    """
+    logging.warning(
+        "Legacy binary task-queue file detected at %s; ignoring for "
+        "security reasons. Delete the file to silence this warning; "
+        "scheduled tasks will be rebuilt as new ones are queued.",
+        legacy_path,
+    )
 
 
 def _save():

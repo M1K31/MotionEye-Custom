@@ -7,7 +7,7 @@ import cv2
 import face_recognition
 import sys
 import os
-import pickle
+import json
 import urllib.request
 import numpy as np
 
@@ -105,13 +105,37 @@ def load_known_faces(conf_path):
         return _known_faces_cache
 
     faces_dir = os.path.join(conf_path, 'faces')
-    encodings_cache_path = os.path.join(faces_dir, 'known_faces.pkl')
+    encodings_cache_path = os.path.join(faces_dir, 'known_faces.json')
+    legacy_cache_path = os.path.join(faces_dir, 'known_faces.pkl')
 
-    # Load from cache if it exists
+    # Refuse to deserialize legacy binary cache files: loading
+    # attacker-influenced binary data is an arbitrary-code-execution risk.
+    if os.path.exists(legacy_cache_path):
+        print(
+            f"WARNING: Legacy binary face-encodings cache at {legacy_cache_path} "
+            f"will be ignored for security. Delete it to silence this warning; "
+            f"the cache will be rebuilt from images in {faces_dir}.",
+            file=sys.stderr,
+        )
+
+    # Load from JSON cache if it exists
     if os.path.exists(encodings_cache_path):
         try:
             with open(encodings_cache_path, 'rb') as f:
-                _known_faces_cache = pickle.load(f)
+                head = f.read(2)
+            if head[:1] == b'\x80':
+                print(
+                    f"WARNING: {encodings_cache_path} appears to be a legacy "
+                    f"binary file; ignoring and regenerating.",
+                    file=sys.stderr,
+                )
+            else:
+                with open(encodings_cache_path, 'r') as f:
+                    data = json.load(f)
+                _known_faces_cache = {
+                    'encodings': [np.asarray(e) for e in data.get('encodings', [])],
+                    'names': list(data.get('names', [])),
+                }
                 print("INFO: Loaded known face encodings from cache.")
                 return _known_faces_cache
         except Exception as e:
@@ -142,10 +166,16 @@ def load_known_faces(conf_path):
 
     _known_faces_cache = {"encodings": known_encodings, "names": known_names}
 
-    # Save to cache for next time
+    # Save to JSON cache for next time (atomic write).
     try:
-        with open(encodings_cache_path, 'wb') as f:
-            pickle.dump(_known_faces_cache, f)
+        serializable = {
+            'encodings': [np.asarray(e).tolist() for e in known_encodings],
+            'names': list(known_names),
+        }
+        tmp = encodings_cache_path + '.tmp'
+        with open(tmp, 'w') as f:
+            json.dump(serializable, f)
+        os.replace(tmp, encodings_cache_path)
     except Exception as e:
         print(f"WARNING: Could not save encodings cache: {e}")
 
