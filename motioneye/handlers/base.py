@@ -184,9 +184,29 @@ class BaseHandler(RequestHandler):
             self.set_header('Server', f'motionEye/{motioneye.VERSION}')
             self.set_header('X-Content-Type-Options', 'nosniff')
             self.set_header('X-Frame-Options', 'DENY')
-            self.set_header('X-XSS-Protection', '1; mode=block')
-            self.set_header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
-        
+            self.set_header('Referrer-Policy', 'no-referrer')
+            # Q9: strict CSP prevents inline-script XSS. style-src keeps
+            # 'unsafe-inline' because the existing UI uses inline styles;
+            # script-src is locked down to same-origin.
+            self.set_header(
+                'Content-Security-Policy',
+                "default-src 'self'; "
+                "script-src 'self'; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data: blob:; "
+                "media-src 'self' blob:; "
+                "connect-src 'self'; "
+                "frame-ancestors 'none'"
+            )
+            # Q9: HSTS only on TLS connections — over plain HTTP it's
+            # ignored anyway (RFC 6797) and gives a false sense of security.
+            if self.request.protocol == 'https':
+                self.set_header(
+                    'Strict-Transport-Security',
+                    'max-age=31536000; includeSubDomains',
+                )
+            # X-XSS-Protection deprecated/harmful in modern browsers — removed.
+
             return super().finish(chunk=chunk)
         else:
             logging.debug('Already finished')
