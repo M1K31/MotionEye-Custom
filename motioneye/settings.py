@@ -164,5 +164,16 @@ HTTP_BASIC_AUTH = False
 SERVER_NAME = socket.gethostname()
 
 # A secret key for signing cookies.
-# This is generated automatically and should not be changed.
-COOKIE_SECRET = secrets.token_hex(32)
+# Q10: persisted in CONF_PATH/cookie.secret (mode 0o600) so sessions
+# survive restarts. Auto-generated on first boot; do not commit.
+from motioneye import secrets_store as _secrets_store
+
+# Best-effort: if CONF_PATH does not yet exist (e.g. very first boot),
+# create it so the secrets file can land there.
+try:
+    os.makedirs(CONF_PATH, exist_ok=True)
+except OSError:
+    pass
+COOKIE_SECRET = _secrets_store.get_or_create_secret(
+    os.path.join(CONF_PATH, 'cookie.secret')
+)
