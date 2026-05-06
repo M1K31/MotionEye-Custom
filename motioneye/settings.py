@@ -38,22 +38,29 @@ else:
     CONF_PATH = [sys.prefix, ''][sys.prefix == '/usr'] + '/etc/motioneye'
 
 # path to the directory where pid files go (must be writable by motionEye)
-for d in ['/run', '/var/run', '/tmp', '/var/tmp']:
-    if os.path.exists(d):
-        RUN_PATH = d
-        break
-
+# Allow override via env var, otherwise pick the first existing AND writable
+# system path. Previously only existence was checked, which broke non-root
+# runs on macOS where /var/run exists but is root-only.
+if os.environ.get('MOTIONEYE_RUN_PATH'):
+    RUN_PATH = os.environ['MOTIONEYE_RUN_PATH']
 else:
-    RUN_PATH = PROJECT_PATH
+    for d in ['/run', '/var/run', '/tmp', '/var/tmp']:
+        if os.path.exists(d) and os.access(d, os.W_OK):
+            RUN_PATH = d
+            break
+    else:
+        RUN_PATH = PROJECT_PATH
 
 # path to the directory where log files go (must be writable by motionEye)
-for d in ['/log', '/var/log', '/tmp', '/var/tmp']:
-    if os.path.exists(d):
-        LOG_PATH = d
-        break
-
+if os.environ.get('MOTIONEYE_LOG_PATH'):
+    LOG_PATH = os.environ['MOTIONEYE_LOG_PATH']
 else:
-    LOG_PATH = RUN_PATH
+    for d in ['/log', '/var/log', '/tmp', '/var/tmp']:
+        if os.path.exists(d) and os.access(d, os.W_OK):
+            LOG_PATH = d
+            break
+    else:
+        LOG_PATH = RUN_PATH
 
 # default output path for media files (must be writable by motionEye)
 # Allow override via environment variable
