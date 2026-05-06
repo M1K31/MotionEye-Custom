@@ -149,8 +149,9 @@ TIMELAPSE_TIMEOUT = 500
 # enable adding and removing cameras from UI
 ADD_REMOVE_CAMERAS = True
 
-# enable HTTPS certificate validation
-VALIDATE_CERTS = True
+# Removed: TLS certificate verification is now always enforced.
+# Set CA_BUNDLE_PATH to add custom CAs (e.g. for self-signed cameras).
+CA_BUNDLE_PATH = None
 
 # an external program to be executed whenever a password changes;
 # the program will be invoked with environment variables MEYE_USERNAME and MEYE_PASSWORD
