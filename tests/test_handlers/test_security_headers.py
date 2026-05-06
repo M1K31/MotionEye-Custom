@@ -36,16 +36,23 @@ class SecurityHeadersTest(HandlerTestCase):
 
 
 class XsrfGuardSourceTest(unittest.TestCase):
-    """Source-level guard for Q5 — XSRF re-enable (this test will fail
-    until Task 2.4 lands; left as a forward-looking guard). Until then
-    the test asserts the *current* (pass-stub) behavior, which we'll
-    flip in Task 2.4."""
+    """Source-level guard for Q5 — XSRF re-enabled for state-changing requests."""
 
-    def test_check_xsrf_cookie_currently_a_pass_stub(self):
+    def test_check_xsrf_cookie_is_not_a_pass_stub(self):
         src = inspect.getsource(BaseHandler.check_xsrf_cookie)
-        # This test will fail (and need updating) once Task 2.4 fixes Q5.
-        # Until then, document the known-bad state explicitly.
-        self.assertIn('pass', src)
+        # The override must do something other than `pass` for browser
+        # POST/PUT/DELETE — it must call super().check_xsrf_cookie().
+        self.assertIn('super().check_xsrf_cookie()', src)
+
+    def test_check_xsrf_cookie_bypasses_signature_auth(self):
+        src = inspect.getsource(BaseHandler.check_xsrf_cookie)
+        # Server-to-server signature auth must bypass the cookie check.
+        self.assertIn("_signature", src)
+
+    def test_check_xsrf_cookie_skips_safe_methods(self):
+        src = inspect.getsource(BaseHandler.check_xsrf_cookie)
+        # GET/HEAD/OPTIONS are XSRF-safe by HTTP spec.
+        self.assertIn('GET', src)
 
 
 if __name__ == '__main__':

@@ -115,20 +115,25 @@ class BaseHandler(RequestHandler):
                 self.redirect('/')
 
     def check_xsrf_cookie(self):
+        """Enforce XSRF cookie for state-changing requests (Q5).
+
+        GET/HEAD/OPTIONS are XSRF-safe by HTTP spec — skip.
+
+        Signature-authenticated server-to-server requests (e.g. relay
+        events from remote cameras) carry `_signature` and authenticate
+        via HMAC over the full request — these have no browser cookies
+        and must bypass the cookie check. The signature is verified
+        independently in `get_current_user`.
+
+        Everything else (browser-driven POST/PUT/DELETE) requires a
+        valid XSRF cookie matching the X-XSRFToken header or _xsrf
+        body field, per Tornado's default.
         """
-        Override Tornado's XSRF check.
-        
-        MotionEye uses signature-based authentication (_signature parameter)
-        instead of XSRF cookies. The signature is computed using HMAC-SHA1
-        with the user's password as the key. This provides equivalent CSRF
-        protection since the signature cannot be forged without knowing
-        the password.
-        
-        See utils.compute_signature() for the signature computation.
-        """
-        # MotionEye uses signature-based auth, not XSRF cookies
-        # The signature is validated in get_current_user()
-        pass
+        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return
+        if self.get_argument('_signature', None):
+            return
+        super().check_xsrf_cookie()
 
     def get_all_arguments(self) -> dict:
         keys = list(self.request.arguments.keys())
