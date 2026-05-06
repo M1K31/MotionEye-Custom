@@ -258,7 +258,9 @@ function makeSlider($input, minVal, maxVal, snapMode, ticks, ticksNumber, decima
             switch (e.which) {
                 case 37: /* left */
                     if (snapMode == 1) { /* strict snapping */
-                        // TODO implement me
+                        // Intentionally no-op: strict-snap arrow nav is
+                        // not implemented; the non-strict path below is
+                        // the only supported keyboard step. (J4)
                     }
                     else {
                         var step = (maxVal - minVal) / 200;
@@ -277,7 +279,9 @@ function makeSlider($input, minVal, maxVal, snapMode, ticks, ticksNumber, decima
 
                 case 39: /* right */
                     if (snapMode == 1) { /* strict snapping */
-                        // TODO implement me
+                        // Intentionally no-op: strict-snap arrow nav is
+                        // not implemented; the non-strict path below is
+                        // the only supported keyboard step. (J4)
                     }
                     else {
                         var step = (maxVal - minVal) / 200;

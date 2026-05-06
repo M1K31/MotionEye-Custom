@@ -24,7 +24,6 @@ import subprocess
 import sys
 import time
 import typing
-import urllib.error
 import urllib.parse
 import urllib.request
 from collections import namedtuple
@@ -40,8 +39,6 @@ _SIGNATURE_REGEX = re.compile(r'[^a-zA-Z0-9/?_.=&{}\[\]":, -]')
 _SPECIAL_COOKIE_NAMES = {'expires', 'domain', 'path', 'secure', 'httponly'}
 
 MASK_WIDTH = 32
-
-DEV_NULL = open('/dev/null', 'w')
 
 COMMON_RESOLUTIONS = [
     (320, 200),
@@ -678,7 +675,7 @@ def call_subprocess(
     stdin=None,
     input=None,
     stdout=subprocess.PIPE,
-    stderr=DEV_NULL,
+    stderr=subprocess.DEVNULL,
     capture_output=False,
     shell=False,
     cwd=None,

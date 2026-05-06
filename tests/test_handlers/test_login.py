@@ -1,7 +1,6 @@
 import json
-import time
-from urllib.parse import urlencode
 import re
+import time
 import unittest
 
 import tornado.testing
