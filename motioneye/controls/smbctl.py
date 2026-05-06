@@ -19,6 +19,7 @@ import logging
 import os
 import re
 import subprocess
+import tempfile
 import time
 
 from tornado.ioloop import IOLoop
@@ -206,6 +207,29 @@ def test_share(server, share, smb_ver, username, password, root_directory):
         maybe_umount()
 
 
+def _write_credentials_file(username: str, password: str) -> str:
+    """Write a 0o600 credentials file for mount.cifs (Q11).
+
+    Passing username=...,password=... in the -o options string exposes
+    the password to any local user via /proc/<pid>/cmdline. A
+    credentials file (referenced by `credentials=<path>` in -o) avoids
+    this leak — mount.cifs reads it at startup and never echoes it.
+
+    Caller is responsible for unlinking the returned path after the
+    mount completes (success or failure).
+    """
+    fd, path = tempfile.mkstemp(prefix='smbcred-', suffix='.cred')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            f.write(f'username={username}\n')
+            f.write(f'password={password}\n')
+        os.chmod(path, 0o600)
+        return path
+    except Exception:
+        os.unlink(path)
+        raise
+
+
 def _mount(server, share, smb_ver, username, password):
     mount_point = make_mount_point(server, share, username)
 
@@ -214,8 +238,11 @@ def _mount(server, share, smb_ver, username, password):
     if not os.path.exists(mount_point):
         os.makedirs(mount_point)
 
+    cred_path = None
     if username:
-        opts = f'username={username},password={password}'
+        # Q11: keep password out of /proc/<pid>/cmdline by using a creds file.
+        cred_path = _write_credentials_file(username, password)
+        opts = f'credentials={cred_path}'
         sec_types = [None, 'ntlm', 'ntlmv2', 'ntlmv2i', 'ntlmsspi', 'none']
 
     else:
@@ -224,27 +251,37 @@ def _mount(server, share, smb_ver, username, password):
 
     opts += ',vers=%s' % smb_ver
 
-    for sec in sec_types:
-        if sec:
-            actual_opts = opts + ',sec=' + sec
+    mounted = False
+    try:
+        for sec in sec_types:
+            if sec:
+                actual_opts = opts + ',sec=' + sec
 
-        else:
-            actual_opts = opts
+            else:
+                actual_opts = opts
 
-        try:
-            logging.debug(
-                f'mounting "//{server}/{share}" at "{mount_point}" (sec={sec})'
-            )
-            subprocess.run(
-                ['mount.cifs', f'//{server}/{share}', mount_point, '-o', actual_opts],
-                check=True,
-            )
-            break
+            try:
+                logging.debug(
+                    f'mounting "//{server}/{share}" at "{mount_point}" (sec={sec})'
+                )
+                subprocess.run(
+                    ['mount.cifs', f'//{server}/{share}', mount_point, '-o', actual_opts],
+                    check=True,
+                )
+                mounted = True
+                break
 
-        except subprocess.CalledProcessError:
-            pass
+            except subprocess.CalledProcessError:
+                pass
+    finally:
+        # mount.cifs reads the credentials file at startup; safe to delete now.
+        if cred_path is not None:
+            try:
+                os.unlink(cred_path)
+            except OSError:
+                pass
 
-    else:
+    if not mounted:
         logging.error(
             f'failed to mount smb share "//{server}/{share}" at "{mount_point}"'
         )
