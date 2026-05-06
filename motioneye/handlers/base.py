@@ -18,7 +18,6 @@
 import hmac
 import json
 import logging
-import secrets
 import weakref
 
 from tornado.web import HTTPError, RequestHandler

@@ -45,6 +45,14 @@ Record in your working notes (NOT in repo): `BASELINE: X passed, Y failed, Z ski
 
 ## Phase 1: Critical Security Fixes
 
+> **Implementation note (2026-05-03):** Task 1.1 was adopted with a
+> *dual-hash variant* of the spec below: the JS client uses
+> `sha1(password)` as its HMAC signature key, so the bcrypt migration
+> required keeping that derivation alongside the new bcrypt password
+> hash. See commit `e851cff1` and the follow-up hardening at
+> `d8537192`. The original single-hash spec is left for context but
+> the implementation diverged as noted.
+
 ### Task 1.1 (C1): Replace SHA-1 password hashing with bcrypt
 
 **Files:**
