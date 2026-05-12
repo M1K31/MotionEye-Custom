@@ -201,7 +201,11 @@ class BaseHandler(RequestHandler):
             # Security headers
             self.set_header('Server', f'motionEye/{VERSION}')
             self.set_header('X-Content-Type-Options', 'nosniff')
-            self.set_header('X-Frame-Options', 'DENY')
+            # SAMEORIGIN (not DENY) — the UI uses same-origin iframes
+            # for the login modal and remote-camera previews. Modern
+            # browsers honor CSP frame-ancestors instead; this header
+            # is kept for legacy browsers that don't.
+            self.set_header('X-Frame-Options', 'SAMEORIGIN')
             self.set_header('Referrer-Policy', 'no-referrer')
             # Q9: strict CSP prevents inline-script XSS. style-src keeps
             # 'unsafe-inline' because the existing UI uses inline styles
@@ -217,7 +221,13 @@ class BaseHandler(RequestHandler):
                 "img-src 'self' data: blob:; "
                 "media-src 'self' blob:; "
                 "connect-src 'self'; "
-                "frame-ancestors 'none'"
+                # 'self' allows same-origin framing (the login modal
+                # iframe and remote-camera preview iframes); blocks
+                # cross-origin clickjacking. X-Frame-Options: DENY
+                # remains as belt-and-suspenders for legacy browsers
+                # that don't honor frame-ancestors.
+                "frame-src 'self'; "
+                "frame-ancestors 'self'"
             )
             # Q9: HSTS only on TLS connections — over plain HTTP it's
             # ignored anyway (RFC 6797) and gives a false sense of security.

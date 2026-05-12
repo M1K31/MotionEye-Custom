@@ -17,7 +17,11 @@ class SecurityHeadersTest(HandlerTestCase):
         self.assertIn('Content-Security-Policy', response.headers)
         csp = response.headers['Content-Security-Policy']
         self.assertIn("default-src 'self'", csp)
-        self.assertIn("frame-ancestors 'none'", csp)
+        # 'self' (not 'none') — the UI uses same-origin iframes for the
+        # login modal and remote-camera previews. X-Frame-Options:
+        # SAMEORIGIN serves the same role for legacy browsers.
+        self.assertIn("frame-ancestors 'self'", csp)
+        self.assertIn("frame-src 'self'", csp)
 
     def test_referrer_policy_set(self):
         response = self.fetch('/manifest.json')
