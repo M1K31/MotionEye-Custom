@@ -25,6 +25,23 @@ __all__ = ('LoginHandler',)
 
 # this will only trigger the login mechanism on the client side, if required
 class LoginHandler(BaseHandler):
+    def check_xsrf_cookie(self):
+        """XSRF exempt — login is the session-bootstrap endpoint.
+
+        XSRF protects authenticated state-changing requests against
+        cross-site forgery. The login POST has no authenticated session
+        yet (that's what it's trying to create), so there's no session
+        for an attacker to forge actions on. The JS-built login form
+        does not carry an _xsrf token (it submits raw form fields
+        through a hidden iframe so browsers will remember the
+        credentials), so requiring XSRF here breaks every login.
+
+        Rate-limiting is enforced separately in post() below to prevent
+        brute force, which is the threat XSRF would otherwise mitigate
+        for this endpoint.
+        """
+        return
+
     @BaseHandler.auth()
     def get(self):
         self.finish_json()

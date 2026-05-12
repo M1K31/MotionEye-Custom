@@ -562,6 +562,27 @@ function authorizeUpload() {
     /* UI */
 
 function initUI() {
+    /* CSP-friendly action links — replaces href="javascript:fn()" which CSP
+     * blocks under strict script-src. Templates and JS-built links use
+     * <a href="#" data-action="fnName"> and we dispatch here. */
+    var actionDispatch = {
+        runAddCameraDialog: function () { runAddCameraDialog(); },
+        authorizeUpload: function () { authorizeUpload(); },
+        showSnapshotUrl: function () { showSnapshotUrl(); },
+        showMjpgUrl: function () { showMjpgUrl(); },
+        showEmbedUrl: function () { showEmbedUrl(); }
+    };
+    $(document).on('click', 'a[data-action]', function (e) {
+        e.preventDefault();
+        var name = $(this).attr('data-action');
+        var fn = actionDispatch[name];
+        if (typeof fn === 'function') {
+            fn();
+        } else {
+            console.warn('Unknown data-action:', name);
+        }
+    });
+
     /* checkboxes */
     makeCheckBox($('input[type=checkbox].styled'));
 
@@ -5305,7 +5326,7 @@ function recreateCameraFrames(cameras) {
         if ($('#cameraSelect').find('option').length < 2 && isAdmin() && !query.camera_ids) {
             /* invite the user to add a camera */
             var addCameraLink = $('<div class="add-camera-message">' +
-                    '<a href="javascript:runAddCameraDialog()">' +
+                    '<a href="#" data-action="runAddCameraDialog">' +
                     i18n.gettext('Vi ankoraŭ ne agordis iun kameraon. Alklaku ĉi tie por aldoni unu ...') +
                     '</a></div>');
             getPageContainer().append(addCameraLink);
