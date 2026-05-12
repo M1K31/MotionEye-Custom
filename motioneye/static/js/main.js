@@ -4046,11 +4046,14 @@ function runAddCameraDialog() {
                 '<tr>' +
                     '<td class="dialog-item-label"><span class="dialog-item-label">'+i18n.gettext("Kamerao tipo")+'</span></td>' +
                     '<td class="dialog-item-value"><select class="styled" id="typeSelect">' +
-                        (hasLocalCamSupport ? '<option value="v4l2">'+i18n.gettext("Loka V4L2-kamerao")+'</option>' : '') +
-                        (hasLocalCamSupport ? '<option value="mmal">'+i18n.gettext("Loka MMAL-kamerao")+'</option>' : '') +
-                        (hasNetCamSupport ? '<option value="netcam">'+i18n.gettext("Reta kamerao")+'</option>' : '') +
-                        '<option value="motioneye">'+i18n.gettext("Fora motionEye kamerao")+'</option>' +
-                        '<option value="mjpeg">'+i18n.gettext("Simpla MJPEG-kamerao")+'</option>' +
+                        // Per-platform local camera option (only one of these
+                        // three should be true on any given host).
+                        (cameraCaps.v4l2         ? '<option value="v4l2">'    +i18n.gettext("USB Webcam (V4L2)")+'</option>'             : '') +
+                        (cameraCaps.mmal         ? '<option value="mmal">'    +i18n.gettext("Raspberry Pi Camera Module (MMAL)")+'</option>' : '') +
+                        (cameraCaps.avfoundation ? '<option value="v4l2">'    +i18n.gettext("Built-in or USB Camera (AVFoundation)")+'</option>' : '') +
+                        (cameraCaps.netcam       ? '<option value="netcam">'  +i18n.gettext("IP / Network Camera (RTSP, HTTP, ONVIF)")+'</option>' : '') +
+                                                   '<option value="motioneye">'+i18n.gettext("Remote motionEye Camera")+'</option>' +
+                                                   '<option value="mjpeg">'    +i18n.gettext("MJPEG Stream Proxy")+'</option>' +
                     '</select></td>' +
                     '<td><span class="help-mark" title="'+i18n.gettext("la speco de kamerao, kiun vi volas aldoni")+'">?</span></td>' +
                 '</tr>' +
@@ -4145,10 +4148,16 @@ function runAddCameraDialog() {
             addCameraInfo.html(
 		i18n.gettext("Aldonante vian aparaton kiel simplan MJPEG-kameraon anstataŭ kiel retan kameraon plibonigos la fotografaĵon, sed neniu moviĝo-detekto, bilda kaptado aŭ registrado de filmoj estos disponebla por ĝi. La kamerao devas esti alirebla por via servilo kaj via retumilo. Ĉi tiu tipo de kamerao ne kongruas kun Internet Explorer."));
         }
-        else { /* assuming v4l2 */
+        else { /* assuming v4l2 (or AVFoundation on macOS — same value, different backend) */
             content.find('tr.v4l2').css('display', 'table-row');
-            addCameraInfo.html(
-                    i18n.gettext("Lokaj V4L2-kameraoj estas kameraaj aparatoj konektitaj rekte al via motionEye-sistemo, kutime per USB."));
+            if (cameraCaps.avfoundation) {
+                // macOS: backend is AVFoundation via ffmpeg, not Linux V4L2
+                addCameraInfo.html(
+                    i18n.gettext("Local cameras include your Mac's built-in camera and any USB webcams. macOS will prompt for camera permission the first time a stream starts."));
+            } else {
+                addCameraInfo.html(
+                    i18n.gettext("Local V4L2 cameras are camera devices that are connected directly to your motionEye system, usually via USB."));
+            }
         }
 
         updateModalDialogPosition();

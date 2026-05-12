@@ -57,6 +57,42 @@ This repository contains an enhanced version of motionEye with performance optim
 | MQTT/Home Assistant | \`paho-mqtt\` | Included by default |
 | Cloud Uploads | \`boto3\` | For S3 storage |
 
+### Supported Camera Types
+
+The Add Camera dialog auto-detects host capabilities and only shows
+options that actually work on the running platform. The labels below
+appear in the UI; the *technical name* in parentheses is the backend
+that drives them.
+
+| User-facing option | Technical backend | macOS | Linux (any) | Raspberry Pi | Requires Motion daemon? |
+|---|---|---|---|---|---|
+| Built-in or USB Camera | AVFoundation (via ffmpeg) | ✅ | — | — | ✅ |
+| USB Webcam | V4L2 | — | ✅ | ✅ | ✅ |
+| Raspberry Pi Camera Module | MMAL | — | — | ✅ | ✅ |
+| IP / Network Camera | RTSP / HTTP / ONVIF (via Motion) | ✅ | ✅ | ✅ | ✅ |
+| Remote motionEye Camera | HTTP relay to another motionEye | ✅ | ✅ | ✅ | — |
+| MJPEG Stream Proxy | direct MJPEG passthrough | ✅ | ✅ | ✅ | — |
+
+**Installing the Motion daemon** (needed to unlock the first four
+options above):
+
+- **Linux** (Debian/Ubuntu/Pi OS): \`sudo apt-get install motion\`
+- **macOS**: no Homebrew formula exists. Use the bundled builder:
+
+  ```bash
+  ./build/install_macos.sh        # interactive; installs to /usr/local
+  ```
+
+  Or build without sudo to \`~/.local/bin/motion\` (see DEVELOPMENT.md).
+  The script automatically applies a portability patch (\`ulong\` →
+  \`unsigned long\`) so the upstream Motion-Project source compiles
+  cleanly on macOS clang.
+
+- **Docker**: the bundled image already includes Motion.
+
+If Motion is not installed, the dialog falls back to the two daemon-
+free options (Remote motionEye, MJPEG Stream Proxy) only.
+
 ---
 
 ## 🚀 Installation

@@ -91,8 +91,22 @@
         var adminUsername = '{{admin_username}}';
         var forcePasswordChange = {% if force_password_change %}true{% else %}false{% endif %};
         var frame = {% if frame %}true{% else %}false{% endif %};
-        var hasLocalCamSupport = {% if has_motion %}true{% else %}false{% endif %};
-        var hasNetCamSupport = {% if has_motion %}true{% else %}false{% endif %};
+        // Per-backend camera capabilities — see motioneye.platform_caps.
+        // Each flag gates one option in the Add Camera dropdown.
+        var cameraCaps = {
+            v4l2:         {% if camera_caps.has_v4l2 and camera_caps.has_motion %}true{% else %}false{% endif %},
+            mmal:         {% if camera_caps.has_mmal and camera_caps.has_motion %}true{% else %}false{% endif %},
+            avfoundation: {% if camera_caps.has_avfoundation and camera_caps.has_motion %}true{% else %}false{% endif %},
+            netcam:       {% if camera_caps.has_netcam %}true{% else %}false{% endif %},
+            motioneye:    true,
+            mjpeg:        true,
+            isMacos:      {% if camera_caps.is_macos %}true{% else %}false{% endif %},
+            isLinux:      {% if camera_caps.is_linux %}true{% else %}false{% endif %},
+            isPi:         {% if camera_caps.is_raspberry_pi %}true{% else %}false{% endif %}
+        };
+        // Backward-compat shims for any code still reading the old flags.
+        var hasLocalCamSupport = cameraCaps.v4l2 || cameraCaps.mmal || cameraCaps.avfoundation;
+        var hasNetCamSupport   = cameraCaps.netcam;
         var currentLang = '{{settings.lingvo}}';
         var availableLanguages = [{% for lang in settings.langlist %}['{{lang[0]}}', '{{lang[1]}}']{% if not loop.last %}, {% endif %}{% endfor %}];
         {% if mask_width %}var maskWidth = {{mask_width}};{% endif %}
