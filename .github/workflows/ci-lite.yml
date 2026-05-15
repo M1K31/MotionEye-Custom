@@ -5,13 +5,13 @@ on:
     branches: [ main ]
     paths:
       - 'build/build_motion_lite_macos.sh'
-      - 'test_motioneye_lite.py'
+      - 'tests/test_motioneye_lite.py'
       - 'docs/MOTIONEYE_LITE.md'
   pull_request:
     branches: [ main ]
     paths:
       - 'build/build_motion_lite_macos.sh'
-      - 'test_motioneye_lite.py'
+      - 'tests/test_motioneye_lite.py'
       - 'docs/MOTIONEYE_LITE.md'
 
 jobs:
@@ -70,7 +70,7 @@ jobs:
           import ast
           import sys
           
-          with open('test_motioneye_lite.py', 'r') as f:
+          with open('tests/test_motioneye_lite.py', 'r') as f:
               tree = ast.parse(f.read())
           
           # Check for CI-aware test structure
@@ -94,6 +94,6 @@ jobs:
         run: |
           source .venv/bin/activate
           # Set CI environment and run tests (should skip installation-dependent ones)
-          CI=true python test_motioneye_lite.py
+          CI=true python tests/test_motioneye_lite.py
         env:
           CI: true

@@ -24,7 +24,6 @@ import subprocess
 import sys
 import time
 import typing
-import urllib.error
 import urllib.parse
 import urllib.request
 from collections import namedtuple
@@ -40,8 +39,6 @@ _SIGNATURE_REGEX = re.compile(r'[^a-zA-Z0-9/?_.=&{}\[\]":, -]')
 _SPECIAL_COOKIE_NAMES = {'expires', 'domain', 'path', 'secure', 'httponly'}
 
 MASK_WIDTH = 32
-
-DEV_NULL = open('/dev/null', 'w')
 
 COMMON_RESOLUTIONS = [
     (320, 200),
@@ -407,17 +404,20 @@ def build_digest_header(method, url, username, password, state):
 
 
 def urlopen(*args, **kwargs):
-    if sys.version_info >= (2, 7, 9) and not settings.VALIDATE_CERTS:
-        # ssl certs are not verified by default
-        # in versions prior to 2.7.9
+    """Open a URL with TLS certificate verification always enforced.
 
+    Previously this function disabled TLS verification when
+    settings.VALIDATE_CERTS was False, which allowed full MitM
+    attacks on outbound HTTPS (webhooks, upload services, remote
+    cameras). Always use the system CA bundle now; for self-signed
+    certs in restricted environments, set settings.CA_BUNDLE_PATH
+    to a custom CA file.
+    """
+    if 'context' not in kwargs:
         import ssl
 
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-
-        kwargs.setdefault('context', ctx)
+        cafile = getattr(settings, 'CA_BUNDLE_PATH', None) or None
+        kwargs['context'] = ssl.create_default_context(cafile=cafile)
 
     return urllib.request.urlopen(*args, **kwargs)
 
@@ -675,7 +675,7 @@ def call_subprocess(
     stdin=None,
     input=None,
     stdout=subprocess.PIPE,
-    stderr=DEV_NULL,
+    stderr=subprocess.DEVNULL,
     capture_output=False,
     shell=False,
     cwd=None,

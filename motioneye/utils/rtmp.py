@@ -22,11 +22,19 @@ __all__ = ('check_rtmp_url',)
 
 
 def check_rtmp_url(data: dict) -> GetCamerasResponse:
-    url_obj = RtmpUrl.from_dict(data)
+    """Stub camera discovery for RTMP/TCP URLs.
 
-    # Since RTMP is a binary TCP stream its a little more work to do a proper test
-    # For now lets just check if a TCP socket is open on the target IP:PORT
-    # TODO: Actually do the TCP SYN/ACK check...
+    NOTE: this function intentionally does not validate that the
+    RTMP target is actually reachable. Implementing a proper
+    SYN/ACK or RTMP-handshake probe is deferred until there is
+    explicit demand — adding fake liveness here would mislead
+    callers more than it would help.
+
+    The `RtmpUrl.from_dict(data)` call still runs to surface
+    malformed inputs (it raises on bad data), but its result is
+    intentionally unused.
+    """
+    RtmpUrl.from_dict(data)  # validate shape, raises on bad input
 
     cameras = [{'id': 'tcp', 'name': 'RTMP/TCP Camera'}]
     return GetCamerasResponse(cameras, None)

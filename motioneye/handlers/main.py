@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from motioneye import config, motionctl, settings, update, utils
+from motioneye import config, motionctl, platform_caps, settings, update, utils
 from motioneye.handlers.base import BaseHandler
 
 __all__ = ('MainHandler',)
@@ -34,6 +34,7 @@ class MainHandler(BaseHandler):
         motion_info = motionctl.find_motion()
         os_version = update.get_os_version()
         main_config = config.get_main()
+        caps = platform_caps.detect()
 
         self.render(
             'main.html',
@@ -57,6 +58,7 @@ class MainHandler(BaseHandler):
             has_hevc_nvmpi_support=motionctl.has_hevc_nvmpi_support(),
             has_h264_qsv_support=motionctl.has_h264_qsv_support(),
             has_hevc_qsv_support=motionctl.has_hevc_qsv_support(),
-            has_motion=bool(motionctl.find_motion()[0]),
+            has_motion=caps['has_motion'],
+            camera_caps=caps,
             mask_width=utils.MASK_WIDTH,
         )

@@ -71,7 +71,7 @@ def _make_request(
         connect_timeout=timeout,
         request_timeout=timeout,
         headers=headers,
-        validate_cert=settings.VALIDATE_CERTS,
+        validate_cert=True,  # C4: TLS verification always enforced
     )
 
 

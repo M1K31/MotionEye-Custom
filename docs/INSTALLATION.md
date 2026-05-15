@@ -1,372 +1,274 @@
 # Installation Guide
 
-This guide provides comprehensive installation instructions for MotionEye Custom across different platforms and deployment methods.
+Three install paths, pick one:
 
-## 🐳 Docker Installation (Recommended)
+1. **[Docker](#docker)** — recommended for almost everyone. Cross-platform,
+   bundled Motion daemon, simple upgrades.
+2. **[Linux native](#linux-native)** — `pip install motioneye` with the
+   distro's Motion package. Best for headless servers and Pi.
+3. **[macOS native](#macos-native)** — required for USB-camera support
+   on macOS (Docker Desktop can't pass AVFoundation devices through).
 
-Docker provides the easiest and most reliable installation method across all platforms.
+For Windows, see [Windows](#windows) below.
 
-### Quick Start
+---
+
+## System requirements
+
+| Tier | CPU | RAM | Storage |
+|---|---|---|---|
+| Minimum | 1 GHz x86-64 / ARM64 | 512 MB | 1 GB |
+| Recommended (multi-camera HD) | Quad-core 2 GHz+ | 2 GB+ | 10 GB+ |
+
+**Software prerequisites depend on the install path** — see the
+relevant section below. Docker is the lightest.
+
+### Optional Python extras
+
+| Extra | Installs | Notes |
+|---|---|---|
+| `face_recognition` | `face_recognition`, `dlib` | Needs a C++ compiler, CMake |
+| (default) | `paho-mqtt`, `boto3`, `opencv-python`, `pycurl` | Always installed |
+
+---
+
+## Docker
+
+See [`DOCKER.md`](DOCKER.md) for the full guide. Quick start:
+
 ```bash
 docker run -d \
   --name motioneye \
   --restart unless-stopped \
   -p 8765:8765 \
-  -v /etc/localtime:/etc/localtime:ro \
+  -p 8081:8081 \
   -v motioneye-config:/etc/motioneye \
   -v motioneye-media:/var/lib/motioneye \
-  m1k31/motioneye-custom:latest
+  -v /etc/localtime:/etc/localtime:ro \
+  im1k31s/motioneye-custom:latest
 ```
 
-### Docker Compose (Recommended for Production)
-```yaml
-version: '3.8'
-services:
-  motioneye:
-    image: m1k31/motioneye-custom:latest
-    container_name: motioneye
-    restart: unless-stopped
-    ports:
-      - "8765:8765"
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - ./config:/etc/motioneye
-      - ./media:/var/lib/motioneye
-      - /dev/video0:/dev/video0  # For USB cameras
-    devices:
-      - /dev/video0  # Adjust for your camera devices
-```
+Compose recipe and multi-arch build instructions: [`DOCKER.md`](DOCKER.md).
 
-Save as `docker-compose.yml` and run:
+---
+
+## Linux native
+
+### Ubuntu / Debian / Raspberry Pi OS
+
 ```bash
-docker-compose up -d
-```
-
-## 🐧 Linux Installation
-
-### Ubuntu/Debian
-```bash
-# Update system
 sudo apt update
+sudo apt install -y \
+  python3 python3-pip python3-venv \
+  motion ffmpeg v4l-utils \
+  build-essential cmake pkg-config \
+  libjpeg-dev libpng-dev libtiff-dev
 
-# Install system dependencies
-sudo apt install -y python3 python3-pip python3-venv motion ffmpeg v4l-utils
+# Virtual environment (recommended)
+python3 -m venv ~/motioneye-env
+source ~/motioneye-env/bin/activate
 
-# For facial recognition (optional)
-sudo apt install -y build-essential cmake python3-dev libopenblas-dev liblapack-dev libjpeg-dev
-
-# Create virtual environment
-python3 -m venv motioneye-env
-source motioneye-env/bin/activate
-
-# Install MotionEye
 pip install --upgrade pip
 pip install motioneye
 
-# Initialize configuration
-motioneye_init
+# Facial recognition (optional)
+pip install motioneye[face_recognition]
 
-# Start service
-systemctl enable motioneye
-systemctl start motioneye
+# First-run config + systemd unit
+motioneye_init
+sudo systemctl enable --now motioneye
 ```
 
-### CentOS/RHEL/Fedora
-```bash
-# Install dependencies
-sudo dnf install python3 python3-pip motion ffmpeg v4l-utils
+### Fedora / RHEL / CentOS Stream
 
-# Follow the same steps as Ubuntu from virtual environment creation
+```bash
+sudo dnf install -y python3 python3-pip motion ffmpeg v4l-utils \
+  gcc cmake pkg-config libjpeg-turbo-devel
+python3 -m venv ~/motioneye-env
+source ~/motioneye-env/bin/activate
+pip install --upgrade pip
+pip install motioneye
+motioneye_init
+sudo systemctl enable --now motioneye
 ```
 
 ### Arch Linux
-```bash
-# Install from AUR or follow manual installation
-yay -S motioneye
 
-# Or manual installation
-sudo pacman -S python3 python-pip motion ffmpeg v4l-utils
-# Then follow Ubuntu steps
+```bash
+sudo pacman -S python python-pip motion ffmpeg v4l-utils
+# Optionally: yay -S motioneye  (AUR)
+# Otherwise follow the Ubuntu venv steps above
 ```
 
-## 🍎 macOS Installation
+---
 
-### MotionEye Lite (Recommended)
+## macOS native
 
-MotionEye Lite provides 60-70% better performance compared to Docker on macOS by using native binaries.
+Two paths, pick one:
+
+### Option A: motionEye Lite (recommended)
+
+Native build with statically-linked Motion + ffmpeg. Best
+performance, supports USB cameras. Build time 60–120 minutes
+(one-time).
 
 ```bash
-# Clone repository
 git clone https://github.com/M1K31/MotionEye-Custom.git
 cd MotionEye-Custom
 
-# Run installation script
-./build/install_macos.sh
-
-# Start MotionEye
-/opt/motioneye-lite/bin/meyectl startserver
+./build/install_macos.sh        # interactive, requires sudo
 ```
 
-### Standard Installation
+See [`MOTIONEYE_LITE.md`](MOTIONEYE_LITE.md) for details, runtime
+controls, and tuning.
+
+### Option B: Standard Homebrew install
+
+Slower path. Build the Motion daemon via the bundled builder, then
+install MotionEye via pip:
+
 ```bash
-# Install Homebrew (if not already installed)
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+# 1. Install build prerequisites
+brew install python3 cmake pkg-config openblas libjpeg libpng
 
-# Install system dependencies
-brew install python3 cmake pkg-config
-brew install openblas libjpeg libpng libtiff
-brew install motion ffmpeg
+# 2. Build the Motion daemon (~15-25 min)
+./build/build_motion_macos.sh   # uses sudo make install -> /usr/local/bin/motion
 
-# Create virtual environment
-python3 -m venv motioneye-env
-source motioneye-env/bin/activate
+# Or build without sudo into ~/.local/bin/motion (see notes below)
 
-# Install MotionEye
+# 3. Install MotionEye
+python3 -m venv ~/motioneye-env
+source ~/motioneye-env/bin/activate
 pip install --upgrade pip
 pip install motioneye
-
-# Initialize and start
 motioneye_init
 python -m motioneye.meyectl startserver
 ```
 
-### Docker on macOS
-If native installation fails, Docker provides a reliable fallback:
+To build Motion without sudo into `~/.local/bin/motion`:
 
 ```bash
-# Install Docker Desktop for Mac
-# Then use the Docker installation method above
+brew install ffmpeg autoconf automake libtool libmicrohttpd \
+             pkg-config libjpeg
+mkdir -p /tmp/motion-src && cd /tmp/motion-src
+git clone --depth 1 https://github.com/Motion-Project/motion.git src
+cd src
+# macOS portability patch (ulong is a Linux-only typedef on clang)
+for f in src/jpegutils.cpp src/webu_ans.cpp src/webu_ans.hpp; do
+    perl -i -pe 's/\bulong\b/unsigned long/g' "$f"
+done
+autoreconf -fiv
+PKG_CONFIG_PATH="$(brew --prefix)/lib/pkgconfig" ./configure
+make -j"$(sysctl -n hw.ncpu)"
+mkdir -p ~/.local/bin
+cp src/motion ~/.local/bin/motion
+# Ensure ~/.local/bin is on PATH
 ```
 
-## 🪟 Windows Installation
+### Option C: Docker Desktop
 
-### Docker Desktop (Recommended)
-1. Install [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
-2. Use the Docker installation method above
+Cross-platform, but **cannot access USB cameras** through Docker
+Desktop's Linux VM on macOS. Fine for IP cameras only.
 
-### WSL2 (Advanced)
-1. Install [WSL2](https://docs.microsoft.com/en-us/windows/wsl/install)
-2. Install Ubuntu or another Linux distribution
-3. Follow the Linux installation instructions inside WSL2
-
-## 🔧 Post-Installation Configuration
-
-### 1. Initial Setup
-1. Access web interface: `http://localhost:8765`
-2. Create admin account
-3. Configure basic settings
-
-### 2. Camera Configuration
-- **IP Cameras:** Add via RTSP/HTTP URLs
-- **USB Cameras:** Auto-detected on Linux, may need device mapping in Docker
-- **Network Cameras:** Configure via manufacturer's streaming URLs
-
-### 3. Motion Detection Setup
-1. Set detection sensitivity
-2. Configure recording settings
-3. Set up notification preferences
-
-### 4. Optional Features
-
-#### Facial Recognition
 ```bash
-# Ensure face_recognition is installed
-pip install face_recognition
-
-# Configure in web interface under Camera Settings
-```
-
-#### Home Assistant Integration
-```yaml
-# Add to Home Assistant configuration.yaml
-camera:
-  - platform: motioneye
-    url: http://localhost:8765
-```
-
-### 5. Server Management & Control
-
-#### Docker Commands
-```bash
-# Basic container management
-docker start motioneye          # Start existing container
-docker stop motioneye           # Stop container
-docker restart motioneye        # Restart container
-docker rm motioneye             # Remove container
-
-# Run new container with auto-restart
-docker run -d \
-  --name motioneye \
-  --restart unless-stopped \
-  -p 8765:8765 \
+# Install Docker Desktop, then:
+docker run -d --name motioneye -p 8765:8765 \
   -v motioneye-config:/etc/motioneye \
   -v motioneye-media:/var/lib/motioneye \
-  m1k31/motioneye-custom:latest
-
-# Monitor container
-docker logs motioneye           # View logs
-docker logs -f motioneye        # Follow logs in real-time
-docker exec -it motioneye bash  # Access container shell
-docker stats motioneye          # View resource usage
+  im1k31s/motioneye-custom:latest
 ```
 
-#### Linux (Native Installation)
+---
+
+## Windows
+
+Windows is supported via Docker or WSL2 — no native install.
+
+### Docker Desktop
+
+Install [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/),
+then use the [Docker Quick Start](#docker) above.
+
+### WSL2
+
+```powershell
+wsl --install
+wsl --install -d Ubuntu
+```
+
+Inside Ubuntu, follow the [Ubuntu / Debian](#ubuntu--debian--raspberry-pi-os)
+section.
+
+---
+
+## Installing the Motion daemon
+
+The Motion daemon is required for **USB Webcam (V4L2)**, **Pi Camera
+Module (MMAL)**, **Built-in / USB Camera (AVFoundation)**, and
+**IP / Network Camera** options. Without it, the Add Camera dialog
+falls back to **Remote motionEye** and **MJPEG Stream Proxy** only.
+
+| Platform | Command |
+|---|---|
+| Ubuntu / Debian / Pi OS | `sudo apt install motion` |
+| Fedora / RHEL | `sudo dnf install motion` |
+| Arch | `sudo pacman -S motion` |
+| macOS | `./build/install_macos.sh` (or no-sudo path above) |
+| Docker | bundled in `im1k31s/motioneye-custom` |
+
+---
+
+## First-run setup
+
+After installing (any path), open the web UI:
+
+- Default URL: <http://localhost:8765/>
+- First boot shows the **Set Admin Password** modal — set one and
+  click Save.
+- Add cameras via the **Add Camera** dialog.
+
+See [`USAGE.md`](USAGE.md) for the operational walkthrough (cameras,
+motion detection, facial recognition, Home Assistant integration,
+storage, tuning).
+
+---
+
+## Updating
+
+### Docker
+
 ```bash
-# Service management (systemd)
-sudo systemctl start motioneye     # Start service
-sudo systemctl stop motioneye      # Stop service  
-sudo systemctl restart motioneye   # Restart service
-sudo systemctl reload motioneye    # Reload configuration
-
-# Auto-start configuration
-sudo systemctl enable motioneye    # Enable auto-start at boot
-sudo systemctl disable motioneye   # Disable auto-start
-
-# Service monitoring
-sudo systemctl status motioneye    # Check service status
-journalctl -u motioneye           # View service logs
-journalctl -fu motioneye          # Follow logs in real-time
-
-# Manual start (development/debugging)
-python3 -m motioneye.meyectl startserver
-python3 -m motioneye.meyectl startserver --debug  # Debug mode
+docker pull im1k31s/motioneye-custom:latest
+docker compose down && docker compose up -d
 ```
 
-#### macOS (MotionEye Lite)
+### Native (pip)
+
 ```bash
-# Direct server control
-/opt/motioneye-lite/bin/meyectl startserver         # Start server (foreground)
-/opt/motioneye-lite/bin/meyectl startserver --debug # Start in debug mode
-
-# Background operation
-nohup /opt/motioneye-lite/bin/meyectl startserver > /tmp/motioneye.log 2>&1 &
-
-# Stop server
-pkill -f motioneye                  # Stop by process name
-kill $(pgrep -f motioneye)          # Stop using PID
-# Or use Ctrl+C if running in foreground
-
-# Check if running
-pgrep -f motioneye                  # Check if process is running
-ps aux | grep motioneye             # View process details
-
-# View logs
-tail -f /tmp/motioneye.log          # If running in background
+source ~/motioneye-env/bin/activate
+pip install --upgrade motioneye
+sudo systemctl restart motioneye   # Linux only
 ```
 
-#### macOS (Standard Installation)
-```bash
-# Activate virtual environment first
-source motioneye-env/bin/activate
+After major upgrades, see the **Upgrade Notes** section in
+[`../CHANGELOG.md`](../CHANGELOG.md).
 
-# Server control
-python -m motioneye.meyectl startserver            # Start server
-python -m motioneye.meyectl startserver --debug    # Debug mode
+---
 
-# Background operation
-nohup python -m motioneye.meyectl startserver > /tmp/motioneye.log 2>&1 &
+## Troubleshooting
 
-# Stop server
-pkill -f "motioneye.meyectl startserver"
-# Or Ctrl+C if running in foreground
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `which motion` shows nothing | Motion daemon not installed | See [Installing the Motion daemon](#installing-the-motion-daemon) |
+| Port 8765 in use | Another service on that port | `lsof -i :8765` to identify; or change the host port mapping (Docker) |
+| Permission denied for `/dev/video0` (Linux) | User not in `video` group | `sudo usermod -a -G video $USER` then re-login |
+| pid directory not writable (macOS) | Default `/var/run` is root-only | Set `MOTIONEYE_RUN_PATH=/tmp/motioneye/run` |
+| Motion build fails on macOS with `unknown type name 'ulong'` | Upstream uses non-portable typedef | Already patched by `build/build_motion_macos.sh`; if building manually, see Option B above |
 
-# Optional: Create launchd service (auto-start)
-# Create ~/Library/LaunchAgents/com.motioneye.plist
-sudo launchctl load ~/Library/LaunchAgents/com.motioneye.plist
-sudo launchctl unload ~/Library/LaunchAgents/com.motioneye.plist
-```
+For more: [`USAGE.md`](USAGE.md) Troubleshooting · [`DOCKER.md`](DOCKER.md) Troubleshooting
 
-#### Common Server Options
-```bash
-# Configuration file
---config /path/to/motioneye.conf   # Custom config file
--c /path/to/motioneye.conf         # Short form
+---
 
-# Port configuration
---port 8080                        # Change default port (8765)
--p 8080                           # Short form
+## Removal
 
-# Debug and logging
---debug                           # Enable debug logging
---log-level INFO                  # Set log level (DEBUG, INFO, WARNING, ERROR)
-
-# Examples
-python -m motioneye.meyectl startserver --port 8080 --debug
-/opt/motioneye-lite/bin/meyectl startserver -p 8080 -c /etc/motioneye.conf
-```
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-#### Permission Denied for Camera Devices
-```bash
-# Add user to video group (Linux)
-sudo usermod -a -G video $USER
-
-# For Docker, ensure proper device mapping
-docker run --device /dev/video0 ...
-```
-
-#### Port Already in Use
-```bash
-# Check what's using port 8765
-netstat -tulpn | grep 8765
-
-# Use different port
-docker run -p 8080:8765 ...
-```
-
-#### Motion Binary Not Found
-```bash
-# Install motion package
-# Ubuntu/Debian
-sudo apt install motion
-
-# macOS
-brew install motion
-
-# Or use MotionEye Lite which includes embedded motion
-```
-
-### Performance Optimization
-
-#### For Low-End Systems
-- Reduce camera resolution
-- Lower frame rate
-- Adjust motion detection sensitivity
-- Use hardware acceleration if available
-
-#### For High-End Systems
-- Enable facial recognition
-- Use multiple camera streams
-- Configure advanced recording options
-
-## 📋 System Requirements
-
-### Minimum Requirements
-- **CPU:** 1GHz+ (x86-64 or ARM64)
-- **RAM:** 512MB
-- **Storage:** 1GB available space
-- **Network:** 100Mbps for multiple IP cameras
-
-### Recommended Requirements
-- **CPU:** Quad-core 2GHz+
-- **RAM:** 2GB+
-- **Storage:** 10GB+ for recordings
-- **Network:** 1Gbps for high-resolution cameras
-
-## 🔐 Security Considerations
-
-1. **Change Default Credentials:** Always create strong admin passwords
-2. **Network Security:** Use HTTPS in production, configure firewall rules
-3. **Camera Security:** Secure camera credentials, use VLANs if possible
-4. **Updates:** Keep system and dependencies updated regularly
-
-## 📞 Getting Help
-
-- **Documentation:** Check all guides in the `docs/` directory
-- **Issues:** [GitHub Issues](https://github.com/M1K31/MotionEye-Custom/issues)
-- **Community:** [GitHub Discussions](https://github.com/M1K31/MotionEye-Custom/discussions)
-
-For uninstallation instructions, see [UNINSTALL.md](../UNINSTALL.md).
+See [`../UNINSTALL.md`](../UNINSTALL.md).

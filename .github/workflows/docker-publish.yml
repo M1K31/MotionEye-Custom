@@ -1,0 +1,73 @@
+name: Docker Publish
+
+# Builds the multi-architecture container image and publishes it to
+# Docker Hub.
+#
+# REQUIRED REPOSITORY SECRETS (Settings -> Secrets and variables -> Actions):
+#   DOCKERHUB_USERNAME  - Docker Hub account name (im1k31s)
+#   DOCKERHUB_TOKEN     - Docker Hub access token with write scope
+#                         (https://hub.docker.com/settings/security)
+#
+# Tagging:
+#   push to main        -> :edge
+#   git tag vX.Y.Z      -> :X.Y.Z  and  :latest
+#   manual dispatch     -> :edge
+#
+# Note: this workflow only references ${{ secrets.* }} and the safe
+# github.ref / github.repository contexts. No untrusted input
+# (issue/PR titles, commit messages) is interpolated into run: steps.
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*.*.*' ]
+  workflow_dispatch:
+
+env:
+  IMAGE: im1k31s/motioneye-custom
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    # Skip on forks — they will not have the Docker Hub secrets.
+    if: github.repository == 'M1K31/MotionEye-Custom'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU (for arm64 emulation)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Derive image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=raw,value=edge,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Build and push (linux/amd64, linux/arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

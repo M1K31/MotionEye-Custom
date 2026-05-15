@@ -2,7 +2,7 @@
 
 {% block script %}
     {{super()}}
-    <script>
+    <script nonce="{{csp_nonce}}">
         var hostname = '{{hostname}}';
         var version = '{{version}}';
     </script>

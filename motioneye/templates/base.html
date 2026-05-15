@@ -25,6 +25,6 @@
     </head>
     <body>
         {% block body %}{% endblock %}
-        {% block inline %}<script>var staticPath = '{{static_path}}';</script>{% endblock %}
+        {% block inline %}<script nonce="{{csp_nonce}}">var staticPath = '{{static_path}}';</script>{% endblock %}
     </body>
 </html>

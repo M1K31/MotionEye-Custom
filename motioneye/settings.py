@@ -38,22 +38,29 @@ else:
     CONF_PATH = [sys.prefix, ''][sys.prefix == '/usr'] + '/etc/motioneye'
 
 # path to the directory where pid files go (must be writable by motionEye)
-for d in ['/run', '/var/run', '/tmp', '/var/tmp']:
-    if os.path.exists(d):
-        RUN_PATH = d
-        break
-
+# Allow override via env var, otherwise pick the first existing AND writable
+# system path. Previously only existence was checked, which broke non-root
+# runs on macOS where /var/run exists but is root-only.
+if os.environ.get('MOTIONEYE_RUN_PATH'):
+    RUN_PATH = os.environ['MOTIONEYE_RUN_PATH']
 else:
-    RUN_PATH = PROJECT_PATH
+    for d in ['/run', '/var/run', '/tmp', '/var/tmp']:
+        if os.path.exists(d) and os.access(d, os.W_OK):
+            RUN_PATH = d
+            break
+    else:
+        RUN_PATH = PROJECT_PATH
 
 # path to the directory where log files go (must be writable by motionEye)
-for d in ['/log', '/var/log', '/tmp', '/var/tmp']:
-    if os.path.exists(d):
-        LOG_PATH = d
-        break
-
+if os.environ.get('MOTIONEYE_LOG_PATH'):
+    LOG_PATH = os.environ['MOTIONEYE_LOG_PATH']
 else:
-    LOG_PATH = RUN_PATH
+    for d in ['/log', '/var/log', '/tmp', '/var/tmp']:
+        if os.path.exists(d) and os.access(d, os.W_OK):
+            LOG_PATH = d
+            break
+    else:
+        LOG_PATH = RUN_PATH
 
 # default output path for media files (must be writable by motionEye)
 # Allow override via environment variable
@@ -149,8 +156,9 @@ TIMELAPSE_TIMEOUT = 500
 # enable adding and removing cameras from UI
 ADD_REMOVE_CAMERAS = True
 
-# enable HTTPS certificate validation
-VALIDATE_CERTS = True
+# Removed: TLS certificate verification is now always enforced.
+# Set CA_BUNDLE_PATH to add custom CAs (e.g. for self-signed cameras).
+CA_BUNDLE_PATH = None
 
 # an external program to be executed whenever a password changes;
 # the program will be invoked with environment variables MEYE_USERNAME and MEYE_PASSWORD
@@ -163,5 +171,16 @@ HTTP_BASIC_AUTH = False
 SERVER_NAME = socket.gethostname()
 
 # A secret key for signing cookies.
-# This is generated automatically and should not be changed.
-COOKIE_SECRET = secrets.token_hex(32)
+# Q10: persisted in CONF_PATH/cookie.secret (mode 0o600) so sessions
+# survive restarts. Auto-generated on first boot; do not commit.
+from motioneye import secrets_store as _secrets_store
+
+# Best-effort: if CONF_PATH does not yet exist (e.g. very first boot),
+# create it so the secrets file can land there.
+try:
+    os.makedirs(CONF_PATH, exist_ok=True)
+except OSError:
+    pass
+COOKIE_SECRET = _secrets_store.get_or_create_secret(
+    os.path.join(CONF_PATH, 'cookie.secret')
+)

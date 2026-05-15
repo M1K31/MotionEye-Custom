@@ -25,6 +25,45 @@ except ImportError:
     logging.warning("face_recognition library not available")
 
 
+def save_encodings(path: str, encodings: dict) -> None:
+    """Persist face encodings as JSON. numpy arrays are converted to lists.
+
+    encodings: mapping of name -> list of encoding vectors (numpy array or list).
+    """
+    serializable = {
+        name: [np.asarray(e).tolist() for e in enc_list]
+        for name, enc_list in encodings.items()
+    }
+    tmp = path + '.tmp'
+    with open(tmp, 'w') as f:
+        json.dump(serializable, f)
+    os.replace(tmp, path)  # atomic on POSIX
+
+
+def load_encodings(path: str) -> dict:
+    """Load face encodings from a JSON file.
+
+    Returns {} if the file is missing or appears to be a legacy binary
+    serialization file. Legacy binary files are NEVER deserialized -- that
+    would re-introduce the arbitrary-code-execution vulnerability they were
+    written to fix. Users should delete the legacy file and retrain.
+    """
+    if not os.path.exists(path):
+        return {}
+    with open(path, 'rb') as f:
+        head = f.read(2)
+    if head[:1] == b'\x80':  # legacy binary protocol marker byte
+        logging.warning(
+            'legacy binary face encodings detected at %s; ignoring '
+            '(delete and retrain to repopulate)',
+            path,
+        )
+        return {}
+    with open(path, 'r') as f:
+        data = json.load(f)
+    return {name: [np.asarray(e) for e in enc_list] for name, enc_list in data.items()}
+
+
 class FaceRecognitionManager:
     """
     Manages face recognition functionality for MotionEye
@@ -302,11 +341,16 @@ class FaceRecognitionManager:
                 self.logger.info(f"Loaded {len(self.known_face_encodings)} face encodings securely")
                 
             else:
-                # Check for legacy pickle file and convert it
-                legacy_pickle_file = os.path.join(self.faces_folder, 'face_encodings.pkl')
-                if os.path.exists(legacy_pickle_file):
-                    self.logger.warning("Found legacy pickle file - converting to secure format")
-                    self._convert_legacy_pickle_file(legacy_pickle_file)
+                # If a legacy binary cache is present, refuse to load it.
+                # Deserializing attacker-influenced binary files = RCE.
+                legacy_binary_file = os.path.join(self.faces_folder, 'face_encodings.pkl')
+                if os.path.exists(legacy_binary_file):
+                    self.logger.warning(
+                        "Legacy binary face encodings file found at %s; ignoring "
+                        "for security reasons. Delete the file and retrain to "
+                        "repopulate the cache.",
+                        legacy_binary_file,
+                    )
                 else:
                     self.logger.info("No existing face encodings found")
                 
@@ -320,35 +364,6 @@ class FaceRecognitionManager:
             with self._lock:
                 self.known_face_encodings = []
                 self.known_face_names = []
-    
-    def _convert_legacy_pickle_file(self, pickle_file: str):
-        """Convert legacy pickle file to secure JSON format"""
-        try:
-            import pickle
-            
-            # Backup the pickle file first
-            backup_file = f"{pickle_file}.backup"
-            os.rename(pickle_file, backup_file)
-            
-            # Load from backup
-            with open(backup_file, 'rb') as f:
-                data = pickle.load(f)
-            
-            # Extract data
-            self.known_face_encodings = data.get('encodings', [])
-            self.known_face_names = data.get('names', [])
-            
-            # Save in secure format
-            self.save_face_encodings()
-            
-            self.logger.info(f"Successfully converted legacy pickle file to secure format")
-            self.logger.info(f"Legacy file backed up as: {backup_file}")
-            
-        except Exception as e:
-            self.logger.error(f"Error converting legacy pickle file: {e}")
-            # Restore original file if conversion failed
-            if os.path.exists(backup_file):
-                os.rename(backup_file, pickle_file)
     
     def recognize_faces_in_image(self, image_path: str) -> List[Dict]:
         """

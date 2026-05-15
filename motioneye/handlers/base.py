@@ -15,22 +15,24 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import hashlib
+import hmac
 import json
 import logging
-import secrets
 import weakref
-import gc
 
 from tornado.web import HTTPError, RequestHandler
 
-from motioneye import config, prefs, settings, template, utils
+from motioneye import VERSION, config, passwords, prefs, settings, template, utils
 
 __all__ = ('BaseHandler', 'NotFoundHandler', 'ManifestHandler')
 
 
 class BaseHandler(RequestHandler):
     _active_handlers = weakref.WeakSet()
+    # Operability flags: emit a single warning per process when an
+    # @*_password is set but its corresponding sig_key is missing.
+    _warned_admin_sig_key_missing = False
+    _warned_normal_sig_key_missing = False
 
     def on_finish(self):
         """Cleanup after request completes."""
@@ -43,11 +45,14 @@ class BaseHandler(RequestHandler):
         self._cleanup()
 
     def _cleanup(self):
+        """Drop large per-request buffers to help GC.
+
+        Q2: removed the previous `gc.collect()` call that fired on every
+        request when >50 handlers were active — that synchronously
+        stalled the Tornado event loop. Python's generational GC
+        handles this automatically; the periodic background sweep in
+        setup_memory_management still runs every 5 minutes if needed.
         """
-        Perform cleanup operations to prevent memory leaks.
-        This is called when the request is finished or the connection is closed.
-        """
-        # Fixed: Changed default from True to False so cleanup actually runs
         if getattr(self, '_cleanup_registered', False):
             return
 
@@ -55,9 +60,6 @@ class BaseHandler(RequestHandler):
 
         if hasattr(self, '_image_data'):
             self._image_data = None
-
-        if len(BaseHandler._active_handlers) > 50:
-            gc.collect()
 
     @classmethod
     def get_active_count(cls):
@@ -111,20 +113,25 @@ class BaseHandler(RequestHandler):
                 self.redirect('/')
 
     def check_xsrf_cookie(self):
+        """Enforce XSRF cookie for state-changing requests (Q5).
+
+        GET/HEAD/OPTIONS are XSRF-safe by HTTP spec — skip.
+
+        Signature-authenticated server-to-server requests (e.g. relay
+        events from remote cameras) carry `_signature` and authenticate
+        via HMAC over the full request — these have no browser cookies
+        and must bypass the cookie check. The signature is verified
+        independently in `get_current_user`.
+
+        Everything else (browser-driven POST/PUT/DELETE) requires a
+        valid XSRF cookie matching the X-XSRFToken header or _xsrf
+        body field, per Tornado's default.
         """
-        Override Tornado's XSRF check.
-        
-        MotionEye uses signature-based authentication (_signature parameter)
-        instead of XSRF cookies. The signature is computed using HMAC-SHA1
-        with the user's password as the key. This provides equivalent CSRF
-        protection since the signature cannot be forged without knowing
-        the password.
-        
-        See utils.compute_signature() for the signature computation.
-        """
-        # MotionEye uses signature-based auth, not XSRF cookies
-        # The signature is validated in get_current_user()
-        pass
+        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return
+        if self.get_argument('_signature', None):
+            return
+        super().check_xsrf_cookie()
 
     def get_all_arguments(self) -> dict:
         keys = list(self.request.arguments.keys())
@@ -172,27 +179,75 @@ class BaseHandler(RequestHandler):
 
         return argument
 
+    @property
+    def csp_nonce(self) -> str:
+        """Per-request random nonce for CSP `script-src` allowlisting.
+
+        Generated lazily on first access and reused for the lifetime of
+        the request. Templates render `<script nonce="{{csp_nonce}}">`
+        to opt server-rendered inline scripts into the CSP allowlist
+        without weakening the policy with `'unsafe-inline'`.
+        """
+        nonce = getattr(self, '_csp_nonce', None)
+        if nonce is None:
+            import base64
+            import os as _os
+            nonce = base64.b64encode(_os.urandom(18)).decode('ascii')
+            self._csp_nonce = nonce
+        return nonce
+
     def finish(self, chunk=None):
         if not self._finished:
-            import motioneye
-
             # Security headers
-            self.set_header('Server', f'motionEye/{motioneye.VERSION}')
+            self.set_header('Server', f'motionEye/{VERSION}')
             self.set_header('X-Content-Type-Options', 'nosniff')
-            self.set_header('X-Frame-Options', 'DENY')
-            self.set_header('X-XSS-Protection', '1; mode=block')
-            self.set_header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
-        
+            # SAMEORIGIN (not DENY) — the UI uses same-origin iframes
+            # for the login modal and remote-camera previews. Modern
+            # browsers honor CSP frame-ancestors instead; this header
+            # is kept for legacy browsers that don't.
+            self.set_header('X-Frame-Options', 'SAMEORIGIN')
+            self.set_header('Referrer-Policy', 'no-referrer')
+            # Q9: strict CSP prevents inline-script XSS. style-src keeps
+            # 'unsafe-inline' because the existing UI uses inline styles
+            # extensively; script-src uses a per-request nonce so the
+            # template-rendered inline data scripts (server-trusted)
+            # execute while injected scripts (attacker-controlled) do not.
+            nonce = self.csp_nonce
+            self.set_header(
+                'Content-Security-Policy',
+                "default-src 'self'; "
+                f"script-src 'self' 'nonce-{nonce}'; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data: blob:; "
+                "media-src 'self' blob:; "
+                "connect-src 'self'; "
+                # 'self' allows same-origin framing (the login modal
+                # iframe and remote-camera preview iframes); blocks
+                # cross-origin clickjacking. X-Frame-Options: DENY
+                # remains as belt-and-suspenders for legacy browsers
+                # that don't honor frame-ancestors.
+                "frame-src 'self'; "
+                "frame-ancestors 'self'"
+            )
+            # Q9: HSTS only on TLS connections — over plain HTTP it's
+            # ignored anyway (RFC 6797) and gives a false sense of security.
+            if self.request.protocol == 'https':
+                self.set_header(
+                    'Strict-Transport-Security',
+                    'max-age=31536000; includeSubDomains',
+                )
+            # X-XSS-Protection deprecated/harmful in modern browsers — removed.
+
             return super().finish(chunk=chunk)
         else:
             logging.debug('Already finished')
 
     def render(self, template_name, content_type='text/html', **context):
-        import motioneye
-
         self.set_header('Content-Type', content_type)
 
-        context.setdefault('version', motioneye.VERSION)
+        context.setdefault('version', VERSION)
+        # Make the CSP nonce available to templates as {{csp_nonce}}.
+        context.setdefault('csp_nonce', self.csp_nonce)
         if self.xsrf_token:
             context['xsrf_token'] = self.xsrf_token.decode('utf-8')
 
@@ -215,39 +270,60 @@ class BaseHandler(RequestHandler):
         admin_username = main_config.get('@admin_username')
         normal_username = main_config.get('@normal_username')
 
-        admin_password = main_config.get('@admin_password')
-        normal_password = main_config.get('@normal_password')
+        admin_password = main_config.get('@admin_password', '')
+        normal_password = main_config.get('@normal_password', '')
 
-        admin_hash = hashlib.sha1(
-            main_config['@admin_password'].encode('utf-8')
-        ).hexdigest()
-        normal_hash = hashlib.sha1(
-            main_config['@normal_password'].encode('utf-8')
-        ).hexdigest()
+        # Signature HMAC key — separate from the (bcrypt) password hash. Falls back
+        # to the legacy SHA-1 hash for installs not yet re-saved on bcrypt.
+        admin_sig_key = main_config.get('@admin_password_sig_key') or (
+            admin_password if passwords.is_legacy_hash(admin_password) else ''
+        )
+        normal_sig_key = main_config.get('@normal_password_sig_key') or (
+            normal_password if passwords.is_legacy_hash(normal_password) else ''
+        )
+
+        # Operability: warn once per process when @*_password is bcrypt but
+        # the corresponding sig_key is missing — signature auth would silently
+        # break for that user until the password is re-saved.
+        if admin_password and not admin_sig_key and not BaseHandler._warned_admin_sig_key_missing:
+            logging.warning(
+                '@admin_password_sig_key is missing while @admin_password is set; '
+                'signature auth disabled for admin until the password is re-saved.'
+            )
+            BaseHandler._warned_admin_sig_key_missing = True
+        if normal_password and not normal_sig_key and not BaseHandler._warned_normal_sig_key_missing:
+            logging.warning(
+                '@normal_password_sig_key is missing while @normal_password is set; '
+                'signature auth disabled for normal user until the password is re-saved.'
+            )
+            BaseHandler._warned_normal_sig_key_missing = True
 
         if settings.HTTP_BASIC_AUTH and 'Authorization' in self.request.headers:
             up = utils.parse_basic_header(self.request.headers['Authorization'])
             if up:
-                if up['username'] == admin_username and admin_password in (
-                    up['password'],
-                    hashlib.sha1(up['password'].encode('utf-8')).hexdigest(),
+                if up['username'] == admin_username and passwords.verify_password(
+                    up['password'], admin_password
                 ):
                     return 'admin'
 
-                if up['username'] == normal_username and normal_password in (
-                    up['password'],
-                    hashlib.sha1(up['password'].encode('utf-8')).hexdigest(),
+                if up['username'] == normal_username and passwords.verify_password(
+                    up['password'], normal_password
                 ):
                     return 'normal'
 
-        if username == admin_username and (
-            signature
-            == utils.compute_signature(
-                self.request.method, self.request.uri, self.request.body, admin_password
-            )
-            or signature
-            == utils.compute_signature(
-                self.request.method, self.request.uri, self.request.body, admin_hash
+        # Empty sig_key would let an attacker forge a deterministic HMAC of an
+        # empty key; require a non-empty key for signature auth to succeed.
+        # Use hmac.compare_digest for constant-time comparison (C2: prevents
+        # byte-level timing-attack signature recovery).
+        if (
+            username == admin_username
+            and admin_sig_key
+            and signature is not None
+            and hmac.compare_digest(
+                signature,
+                utils.compute_signature(
+                    self.request.method, self.request.uri, self.request.body, admin_sig_key
+                ),
             )
         ):
             return 'admin'
@@ -256,17 +332,15 @@ class BaseHandler(RequestHandler):
         if not username and not normal_password:
             return 'normal'
 
-        if username == normal_username and (
-            signature
-            == utils.compute_signature(
-                self.request.method,
-                self.request.uri,
-                self.request.body,
-                normal_password,
-            )
-            or signature
-            == utils.compute_signature(
-                self.request.method, self.request.uri, self.request.body, normal_hash
+        if (
+            username == normal_username
+            and normal_sig_key
+            and signature is not None
+            and hmac.compare_digest(
+                signature,
+                utils.compute_signature(
+                    self.request.method, self.request.uri, self.request.body, normal_sig_key
+                ),
             )
         ):
             return 'normal'

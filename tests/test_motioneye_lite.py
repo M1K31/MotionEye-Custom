@@ -8,7 +8,6 @@ Tests the embedded systems approach for older macOS compatibility
 import os
 import sys
 import subprocess
-import tempfile
 import unittest
 import platform
 from pathlib import Path
@@ -19,20 +18,26 @@ class TestMotionEyeLite(unittest.TestCase):
 
     def setUp(self):
         """Set up test environment"""
-        self.project_root = Path(__file__).parent
+        # File is at tests/test_motioneye_lite.py — project root is the parent.
+        self.project_root = Path(__file__).resolve().parent.parent
         self.lite_binary = Path("/usr/local/motioneye-lite/bin/motion")
         self.lite_path = Path("/usr/local/motioneye-lite")
         self.build_script = self.project_root / "build" / "build_motion_lite_macos.sh"
         self.management_script = self.project_root / "build" / "motioneye-lite-launcher.sh"
-        
+
         # Check if we're in a CI environment or if Lite is not installed
         self.is_ci = os.getenv('CI') == 'true' or os.getenv('GITHUB_ACTIONS') == 'true'
         self.lite_installed = self.lite_path.exists()
-        
+
     def _skip_if_not_lite_environment(self):
-        """Skip test if not in a motionEye Lite environment"""
-        if self.is_ci and not self.lite_installed:
-            self.skipTest("Skipping motionEye Lite test in CI environment without Lite installation")
+        """Skip test if motionEye Lite is not installed.
+
+        Lite tests assert against a real /usr/local/motioneye-lite
+        install, so they must skip everywhere it is absent (CI without
+        Lite, local pytest runs, etc.) — not only in CI.
+        """
+        if not self.lite_installed:
+            self.skipTest('motionEye Lite not installed at %s' % self.lite_path)
 
     def test_motion_binary_exists(self):
         """Test that the motion binary was built and installed"""

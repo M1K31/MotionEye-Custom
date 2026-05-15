@@ -31,51 +31,67 @@ Dual Camera: >90% CPU (vs 75% native)
 
 ## Quick Start
 
-### 1. System Readiness Check
+> **Status note (2026-05):** The repo currently ships
+> `build/install_macos.sh` and `build/build_motion_lite_macos.sh` as
+> the install entry points. A unified `motioneye-lite` management
+> command is on the roadmap — see [`../CHANGELOG.md`](../CHANGELOG.md)
+> → Roadmap.
+
+### 1. Install motionEye Lite
+
 ```bash
-./test-system-readiness.sh
+./build/install_macos.sh    # interactive: pick option 1 "motionEye Lite"
 ```
 
-### 2. Install motionEye Lite
-```bash
-./motioneye-lite install
-```
 *Build time: 60-120 minutes (one-time setup)*
 
-### 3. Start Services  
+The script:
+- Installs build prerequisites via Homebrew
+- Builds a statically-linked Motion 4.3.1 + ffmpeg 4.3.1 +
+  libmicrohttpd 0.9.71 into `/usr/local/motioneye-lite/`
+- Registers a launchd service so motionEye starts at boot
+
+### 2. Start the Service
+
+After install completes the service auto-starts. Manual control:
+
 ```bash
-./motioneye-lite start
+sudo launchctl start  com.motioneye-project.motioneye
+sudo launchctl stop   com.motioneye-project.motioneye
+sudo launchctl list | grep motioneye
 ```
 
-### 4. Access Web Interface
+### 3. Access Web Interface
+
 - **Main Interface**: http://localhost:8765
-- **Camera Stream**: http://localhost:8081
-- **Status Monitoring**: `./motioneye-lite status`
+- **Camera Streams**: http://localhost:8081, 8082, 8083 (one per camera)
 
 ## Advanced Usage
 
-### Performance Monitoring
+### Monitoring
+
 ```bash
-# Real-time performance monitoring
-./motioneye-lite performance
+# Service status (via launchd)
+sudo launchctl list | grep motioneye
 
-# Check service status
-./motioneye-lite status
+# Tail logs
+sudo tail -f /var/log/motioneye.log
+sudo tail -f /usr/local/motioneye-lite/var/log/motion.log
 
-# View logs
-./motioneye-lite logs
+# Resource usage
+top -pid "$(pgrep -f motioneye)"
 ```
 
-### Configuration Management
+### Configuration
+
 ```bash
-# Edit main configuration
-./motioneye-lite config
+# Edit main config (motion.conf)
+sudo $EDITOR /usr/local/etc/motioneye/motioneye.conf
+sudo $EDITOR /usr/local/motioneye-lite/etc/motion.conf
 
-# Test camera connectivity
-./motioneye-lite test /dev/video0
-
-# Restart services
-./motioneye-lite restart
+# Apply changes
+sudo launchctl stop  com.motioneye-project.motioneye
+sudo launchctl start com.motioneye-project.motioneye
 ```
 
 ### Multi-Camera Setup
@@ -90,14 +106,21 @@ Dual Camera: >90% CPU (vs 75% native)
 **Camera 2 (USB):**
 ```bash
 # Create camera-2.conf
-cp /usr/local/motioneye-lite/etc/camera-1.conf \
-   /usr/local/motioneye-lite/etc/camera-2.conf
+sudo cp /usr/local/motioneye-lite/etc/camera-1.conf \
+       /usr/local/motioneye-lite/etc/camera-2.conf
 
 # Edit configuration
-./motioneye-lite config
+sudo $EDITOR /usr/local/motioneye-lite/etc/camera-2.conf
 # Update: videodevice /dev/video1
 # Update: stream_port 8082
+
+# Restart to apply
+sudo launchctl stop  com.motioneye-project.motioneye
+sudo launchctl start com.motioneye-project.motioneye
 ```
+
+> **Easier**: add cameras through the web UI's **Add Camera** dialog
+> instead of editing `.conf` files by hand. See [`USAGE.md`](USAGE.md).
 
 ## Architecture
 
@@ -150,31 +173,40 @@ Load average: < 3.0
 ## Troubleshooting
 
 ### Build Issues
+
+The Lite build runs from the repository's `build/` directory. Check
+prerequisites with:
+
 ```bash
-# Check system requirements
-./test-system-readiness.sh
+# Verify required Homebrew formulae are installed
+brew list ffmpeg pkg-config libjpeg libmicrohttpd automake autoconf libtool
 
-# View build logs
-tail -f /Users/mikelsmart/Downloads/GitHubProjects/MotionEye-Custom/build/macos_lite_build/build.log
+# Verify Xcode CLT
+xcode-select -p
+```
 
-# Clean and rebuild
-rm -rf /Users/mikelsmart/Downloads/GitHubProjects/MotionEye-Custom/build/macos_lite_build
-./motioneye-lite install
+Logs from the build go to `build/macos_lite_build/build.log` *inside
+the repo working tree* (path varies by where you cloned). To re-run:
+
+```bash
+rm -rf build/macos_lite_build
+./build/install_macos.sh
 ```
 
 ### Runtime Issues
+
 ```bash
-# Check service status
-./motioneye-lite status
+# Service status
+sudo launchctl list | grep motioneye
 
-# View logs  
-./motioneye-lite logs
+# Server log
+sudo tail -f /var/log/motioneye.log
 
-# Test camera
-./motioneye-lite test /dev/video0
+# Motion daemon log
+sudo tail -f /usr/local/motioneye-lite/var/log/motion.log
 
-# Monitor performance
-./motioneye-lite performance
+# Test camera permission (macOS prompts for Camera access on first stream)
+# System Settings → Privacy & Security → Camera → enable for Terminal / motion
 ```
 
 ### Common Solutions
@@ -186,14 +218,14 @@ rm -rf /Users/mikelsmart/Downloads/GitHubProjects/MotionEye-Custom/build/macos_l
 - Disable unnecessary features
 
 **Camera Not Detected:**
-- Check camera permissions in System Preferences
-- Test with `./motioneye-lite test /dev/video0`
-- Verify device path with `ls -la /dev/video*`
+- System Settings → Privacy & Security → Camera → enable for the
+  motionEye process (or the parent terminal/launchd)
+- Verify ffmpeg can see the device: `ffmpeg -f avfoundation -list_devices true -i ""`
 
 **Web Interface Not Loading:**
 - Check port availability: `lsof -i:8765`
-- Restart services: `./motioneye-lite restart`
-- Check Python environment in project directory
+- Restart the service: `sudo launchctl stop com.motioneye-project.motioneye && sudo launchctl start com.motioneye-project.motioneye`
+- Check the log: `sudo tail -f /var/log/motioneye.log`
 
 ## Technical Details
 

@@ -1,5 +1,9 @@
 FROM debian:trixie-slim
-LABEL maintainer="Marcus Klein <himself@kleini.org>"
+LABEL org.opencontainers.image.title="motionEye Custom" \
+      org.opencontainers.image.description="Web frontend for the Motion video surveillance daemon (custom fork)" \
+      org.opencontainers.image.source="https://github.com/M1K31/MotionEye-Custom" \
+      org.opencontainers.image.licenses="GPL-3.0" \
+      org.opencontainers.image.authors="im1k31s, upstream: Marcus Klein <himself@kleini.org>"
 
 # Build arguments for user/group IDs
 ARG RUN_UID=1000
@@ -19,7 +23,7 @@ RUN case "$(dpkg --print-architecture)" in \
     esac && \
     apt-get -q update && \
     DEBIAN_FRONTEND="noninteractive" apt-get -qq --option Dpkg::Options::="--force-confnew" --no-install-recommends install \
-      ca-certificates curl python3 fdisk $PACKAGES && \
+      ca-certificates curl python3 fdisk procps $PACKAGES && \
     curl -sSfO 'https://bootstrap.pypa.io/get-pip.py' && \
     python3 get-pip.py && \
     python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel && \
@@ -40,8 +44,12 @@ RUN case "$(dpkg --print-architecture)" in \
     apt-get clean && \
     rm -r /var/lib/apt/lists /var/cache/apt /tmp/motioneye get-pip.py /root/.cache
 
-# Set runtime user (after motion user is created)
-USER motion:motion
+# NOTE: the container intentionally starts as root so entrypoint.sh
+# can create /run/motioneye and chown root-mounted volumes; it then
+# drops to the unprivileged `motion` user via `su` before exec'ing
+# the server. Do NOT add `USER motion:motion` here — that would run
+# the entrypoint unprivileged and the mkdir/chown would fail with
+# "Permission denied".
 WORKDIR /app
 
 # Health check to monitor container status
