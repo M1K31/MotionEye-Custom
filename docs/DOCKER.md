@@ -146,9 +146,10 @@ multi-arch image automatically:
 It requires two repository secrets (**Settings → Secrets and
 variables → Actions**):
 
-- `DOCKERHUB_USERNAME` — `im1k31s`
-- `DOCKERHUB_TOKEN` — a Docker Hub access token with **write** scope,
-  created at <https://hub.docker.com/settings/security>
+- `DOCKER_USERNAME` — `im1k31s`
+- `DOCKER_PASSWORD` — a Docker Hub access token with **Read/Write**
+  scope, created at <https://app.docker.com/settings> → Personal
+  access tokens
 
 Forks skip the workflow automatically (the `if:` guard checks the
 repository name) so they don't fail on missing secrets.
