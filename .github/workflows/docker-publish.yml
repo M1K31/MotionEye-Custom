@@ -71,3 +71,20 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Sync the GitHub README to the Docker Hub repo description so
+      # users browsing https://hub.docker.com/r/im1k31s/motioneye-custom
+      # see the same install + feature info as on GitHub.
+      # Only runs on push to main (skip on tags to avoid two updates
+      # racing on a release).
+      - name: Update Docker Hub description
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          repository: ${{ env.IMAGE }}
+          readme-filepath: ./README.md
+          # Docker Hub short description: 100 char max.
+          short-description: "motionEye fork - hardened security, cross-platform cameras, Home Assistant integration"
+          enable-url-completion: true

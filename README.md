@@ -19,13 +19,22 @@ docker run -d \
   --name motioneye \
   --restart unless-stopped \
   -p 8765:8765 \
+  -p 8081:8081 \
   -v motioneye-config:/etc/motioneye \
   -v motioneye-media:/var/lib/motioneye \
-  im1k31s/motioneye-custom:latest
+  im1k31s/motioneye-custom:edge
 ```
 
 Then open <http://localhost:8765/> — you'll be prompted to set the admin
 password on first boot.
+
+### Available tags on [Docker Hub](https://hub.docker.com/r/im1k31s/motioneye-custom)
+
+| Tag | Updated when | Use for |
+|---|---|---|
+| `edge` | every push to `main` | tracking newest changes |
+| `vX.Y.Z` (e.g. `v0.43.1b4`) | git release tags | pinning to a specific release |
+| `latest` | git release tags | newest tagged release |
 
 For native install (Linux, macOS, Windows/WSL2) and the full Docker
 Compose recipe, see [`docs/INSTALLATION.md`](docs/INSTALLATION.md).

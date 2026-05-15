@@ -6,7 +6,9 @@
 # and uncomment `build:`.
 services:
   motioneye:
-    image: im1k31s/motioneye-custom:latest
+    # `:edge` tracks main; switch to `:latest` or a pinned `:vX.Y.Z`
+    # tag for production.
+    image: im1k31s/motioneye-custom:edge
     # build:
     #   context: ..
     #   dockerfile: docker/Dockerfile
