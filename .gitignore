@@ -257,3 +257,4 @@ snapshots/
 # Project-specific virtual environment (CONTRIBUTING.md / DEVELOPMENT.md
 # instruct contributors to create this directory).
 motioneye_env/
+.DS_Store
