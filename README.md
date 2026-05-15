@@ -73,6 +73,7 @@ technical backend in parentheses.
 | [`docs/DOCKER.md`](docs/DOCKER.md) | Docker deployment — build, compose, devices, troubleshooting |
 | [`docs/MOTIONEYE_LITE.md`](docs/MOTIONEYE_LITE.md) | High-performance native macOS build |
 | [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) | Local dev setup, testing, architecture, debugging |
+| [`SECURITY.md`](SECURITY.md) | Reverse-proxy (Nginx/Apache/Caddy) and MQTT-TLS hardening |
 | [`UNINSTALL.md`](UNINSTALL.md) | Complete removal per platform |
 | [`CHANGELOG.md`](CHANGELOG.md) | Version history and roadmap |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | PR process and code style |

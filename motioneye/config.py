@@ -2417,7 +2417,9 @@ def _set_default_motion(data):
         'broker_address': '',
         'broker_port': 1883,
         'username': '',
-        'password': ''
+        'password': '',
+        'enable_tls': False,
+        'ca_certs_path': ''
     })
 
     data.setdefault('setup_mode', False)
