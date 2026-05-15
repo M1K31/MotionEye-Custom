@@ -1,11 +1,16 @@
-version: "3.5"
+---
+# Host-specific overrides for docker-compose.yml. Compose auto-loads
+# this file. Edit / remove blocks below to match your hardware.
 services:
   motioneye:
-    restart: unless-stopped
-    # The 'image' directive is inherited from the base docker-compose.yml
-    # To build from local source, ensure 'build: .' is uncommented in the base file.
+    # Pass USB cameras into the container (Linux hosts only — Docker
+    # Desktop on macOS cannot pass AVFoundation devices). Remove
+    # devices you do not have.
     devices:
       - "/dev/video0:/dev/video0"
       - "/dev/video1:/dev/video1"
     volumes:
+      # Sync host timezone into the container so timestamps line up.
       - /etc/localtime:/etc/localtime:ro
+    # environment:
+    #   - TZ=America/New_York

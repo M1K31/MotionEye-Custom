@@ -19,24 +19,35 @@ class SecureConfigManager:
         self.secret_key = self._get_or_generate_secret_key()
     
     def _get_or_generate_secret_key(self):
-        """Get or generate secret key for HMAC signing"""
+        """Get or generate secret key for HMAC signing.
+
+        Catches any OSError on read (missing file, permission denied,
+        unreadable home directory, etc.) and falls back to generating
+        a key. If the key also cannot be persisted, an in-memory key
+        is used for the process lifetime — this keeps the server
+        usable even when ``$HOME`` is not writable (e.g. running as a
+        non-root user in a container without a dedicated home).
+        """
         try:
             # Try to read existing key
             with open(self.secret_key_file, 'rb') as f:
                 return f.read()
-        except FileNotFoundError:
-            # Generate new key
+        except OSError:
+            # Missing, unreadable, or permission-denied — generate a new key
             key = secrets.token_bytes(32)
             try:
                 # Ensure directory exists
                 os.makedirs(os.path.dirname(self.secret_key_file), mode=0o700, exist_ok=True)
-                
+
                 with open(self.secret_key_file, 'wb') as f:
                     f.write(key)
                 os.chmod(self.secret_key_file, 0o600)
                 logging.info("Generated new secret key for configuration security")
-            except Exception as e:
-                logging.warning(f"Could not save secret key: {e}")
+            except OSError as e:
+                logging.warning(
+                    "Could not persist secret key (%s); using an "
+                    "in-memory key for this process only", e
+                )
             return key
     
     def create_secure_backup(self, config_data):

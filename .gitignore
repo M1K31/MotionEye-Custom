@@ -245,6 +245,15 @@ snapshots/
 *.temp
 *~
 
+# Local backups directory — convention for snapshots taken before
+# destructive operations (e.g. fresh-install testing).
+.backups/
+
+# Claude Code local settings and runtime state (machine-specific).
+# A shared .claude/settings.json may be committed if one is added.
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
 # Project-specific virtual environment (CONTRIBUTING.md / DEVELOPMENT.md
 # instruct contributors to create this directory).
 motioneye_env/

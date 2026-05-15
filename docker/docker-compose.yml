@@ -1,17 +1,26 @@
 ---
-version: "3.5"
+# Compose file for MotionEye Custom.
+#
+# Default: pull the published multi-arch image from Docker Hub.
+# To build from local source instead, comment out the `image:` line
+# and uncomment `build:`.
 services:
   motioneye:
-    # To build from local source, uncomment the following line and comment out the 'image' line.
-    build: .
-    # ToDo: Change from unstable dev/edge to stable GitHub registry release and Docker registry release, once available
-    # image: ghcr.io/motioneye-project/motioneye:edge  # https://github.com/motioneye-project/motioneye/pkgs/container/motioneye
+    image: im1k31s/motioneye-custom:latest
+    # build:
+    #   context: ..
+    #   dockerfile: docker/Dockerfile
+    container_name: motioneye
+    restart: unless-stopped
     ports:
-      - "8081:8081"
-      - "8765:8765"
+      - "8765:8765"   # web UI
+      - "8081:8081"   # camera 1 stream (add 8082, 8083, ... for more cameras)
     volumes:
       - etc_motioneye:/etc/motioneye
       - var_lib_motioneye:/var/lib/motioneye
+    # See docker-compose.override.yml for examples of:
+    #   - USB camera passthrough (devices:)
+    #   - host timezone (volumes:)
 
 volumes:
   etc_motioneye:

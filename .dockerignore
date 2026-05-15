@@ -5,13 +5,13 @@
 .git/
 .gitignore
 
-# Documentation (keep README.md and CHANGELOG.md)
+# Local backups (snapshots taken before destructive ops — can be huge)
+.backups/
+
+# Documentation (keep README.md and CHANGELOG.md in the image)
 CONTRIBUTING.md
-DEVELOPMENT.md
-NEW_FEATURES.md
 UNINSTALL.md
-docs/INSTALLATION.md
-docs/MOTIONEYE_LITE.md
+docs/
 
 # Build artifacts
 build/
@@ -53,6 +53,9 @@ test_*.py
 build/macos_lite_build/
 build/*.sh
 *.dmg
+
+# Superpowers plan documents (dev process artifacts, not runtime)
+docs/superpowers/
 
 # Logs and runtime
 *.log

@@ -35,40 +35,46 @@ brew install cmake pkg-config openblas libjpeg libpng libtiff
 
 ### Development Environment Setup
 
-1. **Clone and Setup**
-   ```bash
-   git clone https://github.com/M1K31/MotionEye-Custom.git
-   cd MotionEye-Custom
-   
-   # Create virtual environment
-   python3 -m venv motioneye_env
-   source motioneye_env/bin/activate  # Linux/macOS
-   # motioneye_env\Scripts\activate  # Windows
-   
-   # Upgrade core tools
-   pip install --upgrade pip setuptools wheel
-   ```
+```bash
+git clone https://github.com/M1K31/MotionEye-Custom.git
+cd MotionEye-Custom
+make dev-install      # creates motioneye_env/ if missing, installs pkg + dev tools
+make test             # 61 passing / 8 skipped as of audit-fixes-2026-05
+```
 
-2. **Install Dependencies**
-   ```bash
-   # Install in development mode
-   pip install -e .
-   
-   # Install development tools
-   pip install pytest pytest-cov black flake8 pre-commit
-   
-   # Install pre-commit hooks
-   pre-commit install
-   ```
+`make dev-install` is idempotent — re-run it to update dependencies.
+It uses `motioneye_env/bin/pip` explicitly so it works on PEP 668
+systems (recent Debian/macOS) without needing a system-wide pip.
 
-3. **Verify Installation**
-   ```bash
-   # Run test suite
-   python -m pytest -v
-   
-   # Start development server
-   python -m motioneye.meyectl startserver
-   ```
+To install pre-commit hooks (recommended for contributors):
+
+```bash
+motioneye_env/bin/pre-commit install
+```
+
+### Verifying
+
+```bash
+motioneye_env/bin/python -m motioneye.meyectl --help
+motioneye_env/bin/python -m pytest tests/ -v
+```
+
+### Running the server locally
+
+For a self-contained dev setup that doesn't touch system dirs:
+
+```bash
+mkdir -p /tmp/motioneye-test/{conf,run,log,media}
+touch /tmp/motioneye-test/conf/motion.conf
+MOTIONEYE_CONF_PATH=/tmp/motioneye-test/conf \
+MOTIONEYE_RUN_PATH=/tmp/motioneye-test/run \
+MOTIONEYE_LOG_PATH=/tmp/motioneye-test/log \
+MOTIONEYE_MEDIA_PATH=/tmp/motioneye-test/media \
+motioneye_env/bin/python -m motioneye.meyectl startserver -d
+```
+
+Open <http://localhost:8765/>. On first boot you'll be prompted to
+set an admin password (`force_password_change=true` until set).
 
 ## 🧪 Testing
 
@@ -279,7 +285,7 @@ python -m memory_profiler motioneye/server.py
 
 ### Preparation
 1. Update version in `setup.py` and `pyproject.toml`
-2. Update `NEW_FEATURES.md` and `CHANGELOG.md`
+2. Update `CHANGELOG.md` (note: `NEW_FEATURES.md` was consolidated into `docs/USAGE.md` and the changelog)
 3. Run full test suite across platforms
 4. Update documentation
 
