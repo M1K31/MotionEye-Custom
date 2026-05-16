@@ -5,11 +5,14 @@ the Motion daemon, and ffmpeg — no host-side build needed.
 
 Official image: **`im1k31s/motioneye-custom`** ([Docker Hub](https://hub.docker.com/r/im1k31s/motioneye-custom))
 
-| Tag | Notes |
-|---|---|
-| `latest` | most recent release |
-| `<version>` (e.g. `0.43.1b4`) | pinned release |
-| `edge` | latest commit on `main` (development) |
+<a id="available-tags"></a>
+
+| Tag | Published on | Use for |
+|---|---|---|
+| `edge` | every push to `main` | tracking newest changes — currently the **only available tag** until a release is tagged |
+| `vX.Y.Z` (e.g. `v0.43.1b4`) | git release tags | pinning to a specific release |
+| `vX.Y` | git release tags | latest patch within a minor version |
+| `latest` | git release tags | newest tagged release |
 
 Multi-arch: **linux/amd64** + **linux/arm64**.
 
@@ -26,8 +29,12 @@ docker run -d \
   -v motioneye-config:/etc/motioneye \
   -v motioneye-media:/var/lib/motioneye \
   -v /etc/localtime:/etc/localtime:ro \
-  im1k31s/motioneye-custom:latest
+  im1k31s/motioneye-custom:edge
 ```
+
+> **Tag choice:** `:edge` is published on every push to `main`.
+> `:latest` and `:vX.Y.Z` only exist after a git release tag is
+> pushed (see [tag table](#available-tags) below).
 
 - **8765** — main web UI
 - **8081** — first camera stream port (Motion uses
