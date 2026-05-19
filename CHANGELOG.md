@@ -133,17 +133,18 @@ they're not forgotten.
   script that don't exist in the repo. Either build them or rewrite
   the doc to reflect the actual scripts (`build/build_motion_lite_macos.sh`,
   `build/install_macos.sh`).
-- **Transient 403 during first-boot password setup.** When the admin
-  password is changed via the "Set Admin Password" dialog, the client
-  fires an auth-check `GET /login/` signed with the *old* password
-  hash microseconds before the post-change page reload picks up the
-  new one — producing a single `403` in the browser console. The user
-  ends up authenticated correctly and steady-state is clean (zero
-  console errors after reload). Fix: have the password-change success
-  handler update `window.passwordHash`/cookie *before* any further
-  signed request, or suppress the in-flight auth-check during the
-  reload transition (`motioneye/static/js/main.js`,
-  `runPasswordSetupDialog`).
+<!-- 2026-05-16: the "transient 403 during first-boot password setup"
+     entry that was here previously was a misdiagnosis. It only
+     fires when the browser has stale meye_username /
+     meye_password_hash cookies in the profile (e.g. from prior
+     testing on the same hostname or a different MotionEye
+     instance). The 403 is the correct semantic response for an
+     invalid signature and the existing ajax() error handler
+     recovers by opening the login dialog. Fresh clients (incognito,
+     cookies cleared) see zero 403s — verified with a
+     throwaway-container Chrome DevTools MCP repro on 2026-05-16.
+     Not a bug. -->
+
 
 ---
 
